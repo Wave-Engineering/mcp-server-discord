@@ -1,0 +1,86 @@
+/**
+ * read.ts — handleRead for the disc MCP server.
+ *
+ * Reads recent messages from a Discord channel and returns a formatted digest.
+ * Format per line: [ISO timestamp] <username>: content
+ * Output is chronological (oldest first — Discord API returns newest first).
+ */
+
+import { discordFetch } from "./api.ts";
+import { checkKillSwitch, killError } from "./kill.ts";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+interface DiscordMessage {
+  id: string;
+  timestamp: string;
+  content: string;
+  author: {
+    id: string;
+    username: string;
+  };
+}
+
+// ---------------------------------------------------------------------------
+// handleRead
+// ---------------------------------------------------------------------------
+
+const DEFAULT_LIMIT = 20;
+const MAX_LIMIT = 100;
+
+/**
+ * Handle a disc_read tool call.
+ *
+ * @param params  Tool parameters: channel_id (required), limit (optional)
+ * @returns       Formatted digest string or error message
+ */
+export async function handleRead(
+  params: Record<string, unknown>
+): Promise<string> {
+  // Check kill switch
+  const kill = checkKillSwitch();
+  if (kill.active) {
+    return killError(kill);
+  }
+
+  // Extract and validate channel_id
+  const channel_id = params.channel_id;
+  if (typeof channel_id !== "string" || channel_id.trim() === "") {
+    return "Error: channel_id is required";
+  }
+
+  // Extract and clamp limit
+  let limit = DEFAULT_LIMIT;
+  if (params.limit !== undefined) {
+    const raw = Number(params.limit);
+    if (!isNaN(raw) && raw > 0) {
+      limit = Math.min(Math.floor(raw), MAX_LIMIT);
+    }
+  }
+
+  // Fetch messages from Discord API
+  const result = await discordFetch<DiscordMessage[]>(
+    `/channels/${channel_id}/messages?limit=${limit}`
+  );
+
+  if (!result.ok) {
+    return `Error: ${result.error}`;
+  }
+
+  const messages = result.data;
+
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return "No messages found";
+  }
+
+  // Discord returns newest-first — reverse for chronological output
+  const chronological = [...messages].reverse();
+
+  const lines = chronological.map(
+    (msg) => `[${msg.timestamp}] <${msg.author.username}>: ${msg.content}`
+  );
+
+  return lines.join("\n");
+}
