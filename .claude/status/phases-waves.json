@@ -1,0 +1,105 @@
+{
+  "project": "cc-workflow",
+  "base_branch": "main",
+  "master_issue": 1,
+  "phases": [
+    {
+      "name": "Phase 1 \u2014 Foundation",
+      "waves": [
+        {
+          "id": "wave-1",
+          "issues": [
+            {
+              "number": 4,
+              "title": "Foundation Scaffold"
+            }
+          ]
+        },
+        {
+          "id": "wave-2",
+          "issues": [
+            {
+              "number": 5,
+              "title": "Shared Modules (config, kill, api)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 2 \u2014 Tool Surface",
+      "waves": [
+        {
+          "id": "wave-3",
+          "issues": [
+            {
+              "number": 6,
+              "title": "disc_send"
+            },
+            {
+              "number": 7,
+              "title": "disc_read"
+            },
+            {
+              "number": 8,
+              "title": "disc_resolve"
+            }
+          ]
+        },
+        {
+          "id": "wave-4",
+          "issues": [
+            {
+              "number": 9,
+              "title": "disc_list"
+            },
+            {
+              "number": 10,
+              "title": "disc_create_channel"
+            },
+            {
+              "number": 11,
+              "title": "disc_create_thread"
+            }
+          ]
+        },
+        {
+          "id": "wave-5",
+          "issues": [
+            {
+              "number": 12,
+              "title": "MCP Wiring + IT-06"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Phase 3 \u2014 Integration & Release",
+      "waves": [
+        {
+          "id": "wave-6",
+          "issues": [
+            {
+              "number": 278,
+              "title": "claudecode-workflow integration (cross-repo)"
+            }
+          ]
+        },
+        {
+          "id": "wave-7",
+          "issues": [
+            {
+              "number": 13,
+              "title": "E2E Tests + MV-01"
+            },
+            {
+              "number": 14,
+              "title": "Docs Finalization"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

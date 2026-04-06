@@ -1,0 +1,78 @@
+{
+  "current_wave": "wave-1",
+  "current_action": {
+    "action": "pre-flight",
+    "label": "pre-flight",
+    "detail": ""
+  },
+  "waves": {
+    "wave-1": {
+      "status": "pending",
+      "mr_urls": {}
+    },
+    "wave-2": {
+      "status": "pending",
+      "mr_urls": {}
+    },
+    "wave-3": {
+      "status": "pending",
+      "mr_urls": {}
+    },
+    "wave-4": {
+      "status": "pending",
+      "mr_urls": {}
+    },
+    "wave-5": {
+      "status": "pending",
+      "mr_urls": {}
+    },
+    "wave-6": {
+      "status": "pending",
+      "mr_urls": {}
+    },
+    "wave-7": {
+      "status": "pending",
+      "mr_urls": {}
+    }
+  },
+  "issues": {
+    "4": {
+      "status": "open"
+    },
+    "5": {
+      "status": "open"
+    },
+    "6": {
+      "status": "open"
+    },
+    "7": {
+      "status": "open"
+    },
+    "8": {
+      "status": "open"
+    },
+    "9": {
+      "status": "open"
+    },
+    "10": {
+      "status": "open"
+    },
+    "11": {
+      "status": "open"
+    },
+    "12": {
+      "status": "open"
+    },
+    "278": {
+      "status": "open"
+    },
+    "13": {
+      "status": "open"
+    },
+    "14": {
+      "status": "open"
+    }
+  },
+  "deferrals": [],
+  "last_updated": "2026-04-06T20:53:49Z"
+}
