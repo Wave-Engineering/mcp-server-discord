@@ -1,0 +1,177 @@
+/**
+ * send.ts — handleSend: primary outbound tool for disc_send.
+ *
+ * Handles:
+ *  - Kill switch check
+ *  - Message splitting into ≤2000-char chunks with (1/N) prefixes
+ *  - Optional embed (format "title:body")
+ *  - Optional file attachment via multipart FormData on the last chunk
+ */
+
+import { readFileSync } from "node:fs";
+import { basename } from "node:path";
+import { getToken } from "./config.ts";
+import { DISCORD_BASE } from "./api.ts";
+import { discordFetch } from "./api.ts";
+import { checkKillSwitch, killError } from "./kill.ts";
+
+const MAX_CHUNK = 2000;
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export interface SendParams {
+  channel_id: string;
+  message: string;
+  embed?: string;
+  attach_path?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Split `text` into chunks of ≤ maxLen characters on word boundaries
+ * (falls back to hard-split if a single word exceeds maxLen).
+ */
+function splitMessage(text: string, maxLen: number): string[] {
+  if (text.length <= maxLen) {
+    return [text];
+  }
+
+  const chunks: string[] = [];
+  let remaining = text;
+
+  while (remaining.length > maxLen) {
+    // Try to split at the last space within maxLen
+    let splitAt = remaining.lastIndexOf(" ", maxLen);
+    if (splitAt <= 0) {
+      splitAt = maxLen;
+    }
+    chunks.push(remaining.slice(0, splitAt));
+    remaining = remaining.slice(splitAt).replace(/^ /, "");
+  }
+
+  if (remaining.length > 0) {
+    chunks.push(remaining);
+  }
+
+  return chunks;
+}
+
+/**
+ * Parse an embed string of the form "title:body" (split on first colon only).
+ */
+function parseEmbed(embed: string): { title: string; description: string } {
+  const colonIdx = embed.indexOf(":");
+  if (colonIdx === -1) {
+    return { title: embed, description: "" };
+  }
+  return {
+    title: embed.slice(0, colonIdx),
+    description: embed.slice(colonIdx + 1),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// handleSend
+// ---------------------------------------------------------------------------
+
+export async function handleSend(
+  params: Record<string, unknown>
+): Promise<string> {
+  const channel_id = params.channel_id as string;
+  const message = params.message as string;
+  const embed = params.embed as string | undefined;
+  const attach_path = params.attach_path as string | undefined;
+
+  // Kill switch check
+  const killState = checkKillSwitch();
+  if (killState.active) {
+    return killError(killState);
+  }
+
+  // Split message into ≤2000-char raw chunks
+  const rawChunks = splitMessage(message, MAX_CHUNK);
+  const n = rawChunks.length;
+
+  // Label each chunk if there are multiple
+  const labeledChunks =
+    n === 1
+      ? rawChunks
+      : rawChunks.map((chunk, i) => `(${i + 1}/${n}) ${chunk}`);
+
+  // Send all chunks except the last via plain JSON
+  for (let i = 0; i < labeledChunks.length - 1; i++) {
+    const result = await discordFetch(`/channels/${channel_id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ content: labeledChunks[i] }),
+    });
+    if (!result.ok) {
+      return `Error sending chunk ${i + 1}/${n}: ${result.error}`;
+    }
+  }
+
+  // Send the last chunk — may include embed and/or attachment
+  const lastChunk = labeledChunks[labeledChunks.length - 1];
+
+  if (attach_path) {
+    // Multipart FormData for attachment
+    const token = getToken();
+    const fileBytes = readFileSync(attach_path);
+    const fileName = basename(attach_path);
+
+    const form = new FormData();
+
+    const payload: Record<string, unknown> = { content: lastChunk };
+    if (embed) {
+      const { title, description } = parseEmbed(embed);
+      payload.embeds = [{ title, description }];
+    }
+
+    form.append(
+      "payload_json",
+      new Blob([JSON.stringify(payload)], { type: "application/json" }),
+      "payload.json"
+    );
+    form.append("files[0]", new Blob([fileBytes]), fileName);
+
+    let response: Response;
+    try {
+      response = await fetch(`${DISCORD_BASE}/channels/${channel_id}/messages`, {
+        method: "POST",
+        headers: { Authorization: `Bot ${token}` },
+        body: form,
+      });
+    } catch (err) {
+      return `Network error: ${err instanceof Error ? err.message : String(err)}`;
+    }
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      return `Error sending attachment: HTTP ${response.status}: ${body}`.trim();
+    }
+
+    return `Message sent to ${channel_id} (${n} chunk${n !== 1 ? "s" : ""}, with attachment)`;
+  }
+
+  // Plain JSON last chunk (possibly with embed)
+  const body: Record<string, unknown> = { content: lastChunk };
+  if (embed) {
+    const { title, description } = parseEmbed(embed);
+    body.embeds = [{ title, description }];
+  }
+
+  const result = await discordFetch(`/channels/${channel_id}/messages`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+  if (!result.ok) {
+    return `Error sending message: ${result.error}`;
+  }
+
+  return `Message sent to ${channel_id} (${n} chunk${n !== 1 ? "s" : ""})`;
+}

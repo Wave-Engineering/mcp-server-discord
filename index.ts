@@ -9,6 +9,7 @@ import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { handleSend } from "./send.ts";
 
 const KILL_SWITCH_PATH = join(homedir(), ".claude", "discord-bot.kill");
 
@@ -31,6 +32,14 @@ export const TOOLS: Tool[] = [
         message: {
           type: "string",
           description: "The message content to send",
+        },
+        embed: {
+          type: "string",
+          description: "Optional embed in 'title:body' format (split on first colon)",
+        },
+        attach_path: {
+          type: "string",
+          description: "Optional local file path to attach to the last message chunk",
         },
       },
       required: ["channel_id", "message"],
@@ -146,7 +155,7 @@ const HANDLERS: Record<
   string,
   (params: Record<string, unknown>) => Promise<string>
 > = {
-  disc_send: async (_params) => "not implemented",
+  disc_send: handleSend,
   disc_read: async (_params) => "not implemented",
   disc_list: async (_params) => "not implemented",
   disc_resolve: async (_params) => "not implemented",
