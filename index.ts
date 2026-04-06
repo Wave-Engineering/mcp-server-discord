@@ -11,6 +11,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { handleSend } from "./send.ts";
 import { handleRead } from "./read.ts";
+import { handleList } from "./list.ts";
 import { handleResolve } from "./resolve.ts";
 
 const KILL_SWITCH_PATH = join(homedir(), ".claude", "discord-bot.kill");
@@ -67,13 +68,18 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "disc_list",
-    description: "List all channels in a Discord guild",
+    description: "List all channels in a Discord guild, filtered by type",
     inputSchema: {
       type: "object" as const,
       properties: {
         guild_id: {
           type: "string",
           description: "The Discord guild (server) ID to list channels for",
+        },
+        type: {
+          type: "string",
+          enum: ["text", "voice", "category"],
+          description: "Channel type to list (default: text)",
         },
       },
       required: ["guild_id"],
@@ -159,7 +165,7 @@ const HANDLERS: Record<
 > = {
   disc_send: handleSend,
   disc_read: async (params) => handleRead(params),
-  disc_list: async (_params) => "not implemented",
+  disc_list: handleList,
   disc_resolve: handleResolve,
   disc_create_channel: async (_params) => "not implemented",
   disc_create_thread: async (_params) => "not implemented",
