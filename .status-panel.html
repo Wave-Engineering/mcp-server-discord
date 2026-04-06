@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wave Status Dashboard</title>
+  <style>
+:root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface-2: #1a1a26;
+    --border: #2a2a3a;
+    --text: #e0e0e8;
+    --text-dim: #8888a0;
+    --fuchsia: #ff00ff;
+    --fuchsia-dim: #aa00aa;
+    --cyan: #00ffff;
+    --green: #00ff88;
+    --yellow: #ffcc00;
+    --red: #ff4444;
+    --orange: #ff8800;
+    --font-stack: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+}
+
+/* === Reset & Base === */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-stack);
+    font-size: 14px;
+    line-height: 1.5;
+    min-height: 100vh;
+}
+
+/* === Layout === */
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 16px;
+}
+
+/* === Header === */
+
+.header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.header h1 {
+    font-size: 1.8rem;
+    color: var(--fuchsia);
+    text-shadow: 0 0 20px var(--fuchsia-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.header .meta {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+
+/* === Action Banner === */
+
+.action-banner {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.1rem;
+}
+
+.action-banner .icon {
+    font-size: 1.5rem;
+}
+
+.action-banner .label {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.action-banner .message {
+    color: var(--text-dim);
+    margin-left: auto;
+}
+
+.action-preflight {
+    border-left: 4px solid var(--cyan);
+    animation: none;
+}
+
+.action-planning {
+    border-left: 4px solid var(--yellow);
+    animation: none;
+}
+
+.action-inflight {
+    border-left: 4px solid var(--fuchsia);
+    animation: glow 2s ease-in-out infinite;
+}
+
+.action-merging {
+    border-left: 4px solid var(--green);
+    animation: none;
+}
+
+.action-review {
+    border-left: 4px solid var(--orange);
+    animation: none;
+}
+
+.action-meatbag {
+    border-left: 4px solid var(--fuchsia);
+    animation: throb 2.5s ease-in-out infinite;
+}
+
+.action-idle {
+    border-left: 4px solid var(--border);
+    animation: none;
+}
+
+/* === Animations === */
+
+@keyframes throb {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+@keyframes glow {
+    0%, 100% { box-shadow: 0 0 5px var(--fuchsia-dim); }
+    50% { box-shadow: 0 0 20px var(--fuchsia), 0 0 40px var(--fuchsia-dim); }
+}
+
+/* === Progress Rail === */
+
+.progress-rail {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+}
+
+.progress-rail .bar {
+    display: flex;
+    height: 24px;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-rail .segment {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.progress-rail .text {
+    text-align: center;
+    margin-top: 8px;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+}
+
+/* === Gauge Cards === */
+
+.gauge-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.gauge-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.gauge-card .gauge-label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+.gauge-card .gauge-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.gauge-card .gauge-bar {
+    height: 6px;
+    background: var(--surface-2);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.gauge-card .gauge-bar .gauge-fill {
+    height: 100%;
+    background: var(--fuchsia);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+/* === Execution Grid === */
+
+.execution-grid {
+    margin-bottom: 20px;
+}
+
+.phase-section {
+    margin-bottom: 16px;
+}
+
+.phase-header {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px 8px 0 0;
+    padding: 12px 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.phase-body {
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    padding: 12px;
+}
+
+.wave-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    margin-bottom: 8px;
+    overflow: hidden;
+}
+
+.wave-card:last-child {
+    margin-bottom: 0;
+}
+
+.wave-card .wave-header {
+    background: var(--surface-2);
+    padding: 10px 14px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.wave-card .issue-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.wave-card .issue-table th,
+.wave-card .issue-table td {
+    padding: 8px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+}
+
+.wave-card .issue-table th {
+    color: var(--text-dim);
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+}
+
+.wave-card .issue-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* === Badges === */
+
+.badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-pending {
+    background: rgba(136, 136, 160, 0.2);
+    color: var(--text-dim);
+}
+
+.badge-in-progress {
+    background: rgba(255, 0, 255, 0.2);
+    color: var(--fuchsia);
+}
+
+.badge-running {
+    background: rgba(255, 0, 255, 0.2);
+    color: var(--fuchsia);
+}
+
+.badge-completed {
+    background: rgba(0, 255, 136, 0.2);
+    color: var(--green);
+}
+
+.badge-closed {
+    background: rgba(0, 255, 136, 0.2);
+    color: var(--green);
+}
+
+.badge-failed {
+    background: rgba(255, 68, 68, 0.2);
+    color: var(--red);
+}
+
+.badge-blocked {
+    background: rgba(255, 136, 0, 0.2);
+    color: var(--orange);
+}
+
+/* === Deferrals === */
+
+.deferrals-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.deferrals-section h2 {
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    color: var(--text-dim);
+}
+
+.deferrals-section.pending {
+    border-left: 4px solid var(--orange);
+}
+
+.deferrals-section.accepted {
+    border-left: 4px solid var(--green);
+}
+
+.deferrals-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.deferrals-table th,
+.deferrals-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.85rem;
+}
+
+.deferrals-table th {
+    color: var(--text-dim);
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+}
+
+.deferrals-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* === Footer === */
+
+.footer {
+    text-align: center;
+    padding: 16px;
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    border-top: 1px solid var(--border);
+    margin-top: 20px;
+}
+
+.footer .fallback-notice {
+    color: var(--orange);
+    margin-top: 8px;
+    display: none;
+}
+
+/* === Responsive === */
+
+@media (max-width: 768px) {
+    .gauge-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .gauge-grid {
+        grid-template-columns: 1fr;
+    }
+}
+  </style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+  <h1>cc-workflow</h1>
+  <div class="meta">Wave: wave-1</div>
+</div>
+<div class="action-banner action-preflight" data-action-banner>
+  <span class="icon">&#x1F50D;</span>
+  <span class="label">pre-flight</span>
+  
+</div>
+<div class="progress-rail">
+  <div class="text">0/12 issues (0%)</div>
+  <div class="bar">
+    <div class="segment" data-rail-phase="phase-1" style="width:16.6667%;display:flex;overflow:hidden;"><div class="segment" data-rail-phase="phase-1" data-field="fill" style="width:0.0000%;background:rgba(255, 0, 255, 1.0);flex-shrink:0;"></div><div class="segment" data-rail-phase="phase-1" data-field="fill" style="width:100.0000%;background:rgba(255, 0, 255, 0.2);flex-shrink:0;"></div></div>
+    <div class="segment" data-rail-phase="phase-2" style="width:58.3333%;display:flex;overflow:hidden;"><div class="segment" data-rail-phase="phase-2" data-field="fill" style="width:0.0000%;background:rgba(0, 255, 255, 1.0);flex-shrink:0;"></div><div class="segment" data-rail-phase="phase-2" data-field="fill" style="width:100.0000%;background:rgba(0, 255, 255, 0.2);flex-shrink:0;"></div></div>
+    <div class="segment" data-rail-phase="phase-3" style="width:25.0000%;display:flex;overflow:hidden;"><div class="segment" data-rail-phase="phase-3" data-field="fill" style="width:0.0000%;background:rgba(0, 255, 136, 1.0);flex-shrink:0;"></div><div class="segment" data-rail-phase="phase-3" data-field="fill" style="width:100.0000%;background:rgba(0, 255, 136, 0.2);flex-shrink:0;"></div></div>
+  </div>
+</div>
+<div class="gauge-grid">
+<div class="gauge-card" data-gauge="phase">
+  <div class="gauge-label">Phase</div>
+  <div class="gauge-value" data-field="value">1/3</div>
+  <div class="gauge-sub">Phase 1 — Foundation</div>
+  <div class="gauge-bar"><div class="gauge-fill" style="width: 33.3%"></div></div>
+</div>
+<div class="gauge-card" data-gauge="wave">
+  <div class="gauge-label">Wave</div>
+  <div class="gauge-value" data-field="value">1/2</div>
+  <div class="gauge-sub">in phase 1</div>
+  <div class="gauge-bar"><div class="gauge-fill" style="width: 50.0%"></div></div>
+</div>
+<div class="gauge-card" data-gauge="flight">
+  <div class="gauge-label">Flight</div>
+  <div class="gauge-value" data-field="value">—</div>
+  <div class="gauge-sub">—</div>
+  <div class="gauge-bar"><div class="gauge-fill" style="width: 0.0%"></div></div>
+</div>
+<div class="gauge-card" data-gauge="deferrals">
+  <div class="gauge-label">Deferrals</div>
+  <div class="gauge-value" data-field="value">0 pending</div>
+  <div class="gauge-sub">0 accepted</div>
+  <div class="gauge-bar"><div class="gauge-fill" style="width: 0.0%"></div></div>
+</div>
+</div>
+<div class="deferrals-section pending" style="overflow: hidden; max-height: 0; padding: 0; margin: 0;">
+  <h2>Pending Deferrals</h2>
+  
+</div>
+<div class="execution-grid">
+<section class="phase-section" data-phase="1">
+  <div class="phase-header" style="border-left: 4px solid var(--fuchsia);"><span class="phase-name">Phase 1 — Foundation</span></div>
+  <div class="phase-body">
+    <div class="wave-card" data-wave="wave-1">
+  <div class="wave-header"><span class="wave-id">wave-1</span><span class="badge badge-pending" data-wave="wave-1" data-field="waves.wave-1.status">pending</span></div>
+  <table class="issue-table">
+<thead><tr><th>#</th><th>Title</th><th>Status</th><th>MR / PR</th></tr></thead>
+<tbody>
+<tr>
+  <td>#4</td>
+  <td>Foundation Scaffold</td>
+  <td><span class="badge badge-pending" data-wave="wave-1" data-issue="4" data-field="issues.4.status">open</span></td>
+  <td><span class="mr-link" data-wave="wave-1" data-issue="4" data-field="waves.wave-1.mr_urls.4"></span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="wave-card" data-wave="wave-2">
+  <div class="wave-header"><span class="wave-id">wave-2</span><span class="badge badge-pending" data-wave="wave-2" data-field="waves.wave-2.status">pending</span></div>
+  <table class="issue-table">
+<thead><tr><th>#</th><th>Title</th><th>Status</th><th>MR / PR</th></tr></thead>
+<tbody>
+<tr>
+  <td>#5</td>
+  <td>Shared Modules (config, kill, api)</td>
+  <td><span class="badge badge-pending" data-wave="wave-2" data-issue="5" data-field="issues.5.status">open</span></td>
+  <td><span class="mr-link" data-wave="wave-2" data-issue="5" data-field="waves.wave-2.mr_urls.5"></span></td>
+</tr>
+</tbody>
+</table>
+</div>
+  </div>
+</section>
+<section class="phase-section" data-phase="2">
+  <div class="phase-header" style="border-left: 4px solid var(--cyan);"><span class="phase-name">Phase 2 — Tool Surface</span></div>
+  <div class="phase-body">
+    <div class="wave-card" data-wave="wave-3">
+  <div class="wave-header"><span class="wave-id">wave-3</span><span class="badge badge-pending" data-wave="wave-3" data-field="waves.wave-3.status">pending</span></div>
+  <table class="issue-table">
+<thead><tr><th>#</th><th>Title</th><th>Status</th><th>MR / PR</th></tr></thead>
+<tbody>
+<tr>
+  <td>#6</td>
+  <td>disc_send</td>
+  <td><span class="badge badge-pending" data-wave="wave-3" data-issue="6" data-field="issues.6.status">open</span></td>
+  <td><span class="mr-link" data-wave="wave-3" data-issue="6" data-field="waves.wave-3.mr_urls.6"></span></td>
+</tr>
+<tr>
+  <td>#7</td>
+  <td>disc_read</td>
+  <td><span class="badge badge-pending" data-wave="wave-3" data-issue="7" data-field="issues.7.status">open</span></td>
+  <td><span class="mr-link" data-wave="wave-3" data-issue="7" data-field="waves.wave-3.mr_urls.7"></span></td>
+</tr>
+<tr>
+  <td>#8</td>
+  <td>disc_resolve</td>
+  <td><span class="badge badge-pending" data-wave="wave-3" data-issue="8" data-field="issues.8.status">open</span></td>
+  <td><span class="mr-link" data-wave="wave-3" data-issue="8" data-field="waves.wave-3.mr_urls.8"></span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="wave-card" data-wave="wave-4">
+  <div class="wave-header"><span class="wave-id">wave-4</span><span class="badge badge-pending" data-wave="wave-4" data-field="waves.wave-4.status">pending</span></div>
+  <table class="issue-table">
+<thead><tr><th>#</th><th>Title</th><th>Status</th><th>MR / PR</th></tr></thead>
+<tbody>
+<tr>
+  <td>#9</td>
+  <td>disc_list</td>
+  <td><span class="badge badge-pending" data-wave="wave-4" data-issue="9" data-field="issues.9.status">open</span></td>
+  <td><span class="mr-link" data-wave="wave-4" data-issue="9" data-field="waves.wave-4.mr_urls.9"></span></td>
+</tr>
+<tr>
+  <td>#10</td>
+  <td>disc_create_channel</td>
+  <td><span class="badge badge-pending" data-wave="wave-4" data-issue="10" data-field="issues.10.status">open</span></td>
+  <td><span class="mr-link" data-wave="wave-4" data-issue="10" data-field="waves.wave-4.mr_urls.10"></span></td>
+</tr>
+<tr>
+  <td>#11</td>
+  <td>disc_create_thread</td>
+  <td><span class="badge badge-pending" data-wave="wave-4" data-issue="11" data-field="issues.11.status">open</span></td>
+  <td><span class="mr-link" data-wave="wave-4" data-issue="11" data-field="waves.wave-4.mr_urls.11"></span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="wave-card" data-wave="wave-5">
+  <div class="wave-header"><span class="wave-id">wave-5</span><span class="badge badge-pending" data-wave="wave-5" data-field="waves.wave-5.status">pending</span></div>
+  <table class="issue-table">
+<thead><tr><th>#</th><th>Title</th><th>Status</th><th>MR / PR</th></tr></thead>
+<tbody>
+<tr>
+  <td>#12</td>
+  <td>MCP Wiring + IT-06</td>
+  <td><span class="badge badge-pending" data-wave="wave-5" data-issue="12" data-field="issues.12.status">open</span></td>
+  <td><span class="mr-link" data-wave="wave-5" data-issue="12" data-field="waves.wave-5.mr_urls.12"></span></td>
+</tr>
+</tbody>
+</table>
+</div>
+  </div>
+</section>
+<section class="phase-section" data-phase="3">
+  <div class="phase-header" style="border-left: 4px solid var(--green);"><span class="phase-name">Phase 3 — Integration &amp; Release</span></div>
+  <div class="phase-body">
+    <div class="wave-card" data-wave="wave-6">
+  <div class="wave-header"><span class="wave-id">wave-6</span><span class="badge badge-pending" data-wave="wave-6" data-field="waves.wave-6.status">pending</span></div>
+  <table class="issue-table">
+<thead><tr><th>#</th><th>Title</th><th>Status</th><th>MR / PR</th></tr></thead>
+<tbody>
+<tr>
+  <td>#278</td>
+  <td>claudecode-workflow integration (cross-repo)</td>
+  <td><span class="badge badge-pending" data-wave="wave-6" data-issue="278" data-field="issues.278.status">open</span></td>
+  <td><span class="mr-link" data-wave="wave-6" data-issue="278" data-field="waves.wave-6.mr_urls.278"></span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="wave-card" data-wave="wave-7">
+  <div class="wave-header"><span class="wave-id">wave-7</span><span class="badge badge-pending" data-wave="wave-7" data-field="waves.wave-7.status">pending</span></div>
+  <table class="issue-table">
+<thead><tr><th>#</th><th>Title</th><th>Status</th><th>MR / PR</th></tr></thead>
+<tbody>
+<tr>
+  <td>#13</td>
+  <td>E2E Tests + MV-01</td>
+  <td><span class="badge badge-pending" data-wave="wave-7" data-issue="13" data-field="issues.13.status">open</span></td>
+  <td><span class="mr-link" data-wave="wave-7" data-issue="13" data-field="waves.wave-7.mr_urls.13"></span></td>
+</tr>
+<tr>
+  <td>#14</td>
+  <td>Docs Finalization</td>
+  <td><span class="badge badge-pending" data-wave="wave-7" data-issue="14" data-field="issues.14.status">open</span></td>
+  <td><span class="mr-link" data-wave="wave-7" data-issue="14" data-field="waves.wave-7.mr_urls.14"></span></td>
+</tr>
+</tbody>
+</table>
+</div>
+  </div>
+</section>
+</div>
+<div class="deferrals-section accepted">
+  <h2>Accepted Deferrals</h2>
+  
+</div>
+<div class="footer">
+  <div>Generated: 2026-04-06T20:53:49Z</div>
+  <div data-timestamp>Last state update: 2026-04-06T20:53:49Z</div>
+  <div class="fallback-notice" data-fallback-notice></div>
+</div>
+</div>
+<script>
+(function () {
+  "use strict";
+
+  var POLL_INTERVAL_MS = 3000;
+  var timerId = null;
+
+  /**
+   * Update a single DOM element from a (possibly nested) state value.
+   * Elements declare their binding via data-field="dotted.path".
+   */
+  function resolve(obj, path) {
+    var parts = path.split(".");
+    var cur = obj;
+    for (var i = 0; i < parts.length; i++) {
+      if (cur == null) return undefined;
+      cur = cur[parts[i]];
+    }
+    return cur;
+  }
+
+  function applyState(state) {
+    var elements = document.querySelectorAll("[data-field]");
+    for (var i = 0; i < elements.length; i++) {
+      var el = elements[i];
+      var field = el.getAttribute("data-field");
+      var value = resolve(state, field);
+      if (value !== undefined) {
+        el.textContent = String(value);
+      }
+    }
+
+    /* Update action banner class if current_action is present */
+    var banner = document.querySelector("[data-action-banner]");
+    if (banner && state.current_action) {
+      var actionMap = {
+        "pre-flight": "action-preflight",
+        "planning": "action-planning",
+        "in-flight": "action-inflight",
+        "merging": "action-merging",
+        "post-wave-review": "action-review",
+        "waiting-on-meatbag": "action-meatbag",
+        "idle": "action-idle"
+      };
+      /* Remove all action classes */
+      var classes = Object.values(actionMap);
+      for (var c = 0; c < classes.length; c++) {
+        banner.classList.remove(classes[c]);
+      }
+      var newClass = actionMap[state.current_action.action];
+      if (newClass) {
+        banner.classList.add(newClass);
+      }
+    }
+
+    /* Update badge classes for elements with data-status */
+    var statusEls = document.querySelectorAll("[data-status]");
+    for (var s = 0; s < statusEls.length; s++) {
+      var statusEl = statusEls[s];
+      var statusField = statusEl.getAttribute("data-status");
+      var statusValue = resolve(state, statusField);
+      if (statusValue !== undefined) {
+        /* Remove existing badge classes */
+        statusEl.className = statusEl.className.replace(/badge-\S+/g, "").trim();
+        statusEl.classList.add("badge-" + statusValue.replace(/_/g, "-"));
+        statusEl.textContent = statusValue.replace(/_/g, " ");
+      }
+    }
+
+    /* Update footer timestamp */
+    var tsEl = document.querySelector("[data-timestamp]");
+    if (tsEl) {
+      tsEl.textContent = "Last updated: " + new Date().toLocaleTimeString();
+    }
+  }
+
+  function pollState() {
+    fetch("state.json")
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+        return response.json();
+      })
+      .then(function (state) {
+        applyState(state);
+      })
+      .catch(function () {
+        /* Disable polling on failure [R-28] */
+        if (timerId !== null) {
+          clearInterval(timerId);
+          timerId = null;
+        }
+        /* Fall back to meta-refresh for file:// protocol */
+        if (window.location.protocol === "file:" &&
+            !document.querySelector('meta[http-equiv="refresh"]')) {
+          var meta = document.createElement("meta");
+          meta.httpEquiv = "refresh";
+          meta.content = "5";
+          document.head.appendChild(meta);
+        }
+        var notice = document.querySelector("[data-fallback-notice]");
+        if (notice) {
+          notice.style.display = "block";
+          notice.textContent = "Live updates unavailable \u2014 refresh to update";
+        }
+      });
+  }
+
+  /* Start polling [R-27] */
+  timerId = setInterval(pollState, POLL_INTERVAL_MS);
+
+  /* Run once immediately so the dashboard is current on load */
+  pollState();
+})();
+</script>
+</body>
+</html>
