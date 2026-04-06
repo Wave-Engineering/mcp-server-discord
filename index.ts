@@ -14,6 +14,7 @@ import { handleRead } from "./read.ts";
 import { handleList } from "./list.ts";
 import { handleResolve } from "./resolve.ts";
 import { handleCreateChannel } from "./create_channel.ts";
+import { handleCreateThread } from "./create_thread.ts";
 
 const KILL_SWITCH_PATH = join(homedir(), ".claude", "discord-bot.kill");
 
@@ -169,7 +170,7 @@ const HANDLERS: Record<
   disc_list: handleList,
   disc_resolve: handleResolve,
   disc_create_channel: handleCreateChannel,
-  disc_create_thread: async (_params) => "not implemented",
+  disc_create_thread: handleCreateThread,
 };
 
 // Read DISCORD_TOKEN from environment
