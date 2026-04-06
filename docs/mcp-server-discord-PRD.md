@@ -920,26 +920,26 @@ Audit that all 6 tool imports are wired in `index.ts`, then implement and run th
 
 ### Appendix V: Verification Requirements Traceability Matrix (VRTM)
 
-*Populated after implementation. Status updated as each Phase closes.*
+*Completed 2026-04-06. All requirements verified as of v1.0.0 release.*
 
 | Req ID | Requirement (short) | Verification Item | Method | Status |
 |--------|--------------------|--------------------|--------|--------|
-| R-01 | disc_send tool | Story 2.1 AC, IT-06, E2E-01 | Unit + integration + E2E | Pending |
-| R-02 | disc_read tool | Story 2.2 AC, IT-06, E2E-01 | Unit + integration + E2E | Pending |
-| R-03 | disc_list tool | Story 2.4 AC, E2E-05 | Unit + E2E | Pending |
-| R-04 | disc_resolve tool | Story 2.3 AC, E2E-02 | Unit + E2E | Pending |
-| R-05 | disc_create_channel | Story 2.5 AC, E2E-07 | Unit + E2E | Pending |
-| R-06 | disc_create_thread | Story 2.6 AC, E2E-06 | Unit + E2E | Pending |
-| R-07 | Message auto-split | Story 2.1 AC, IT-04 | Unit + integration | Pending |
-| R-08 | File attachment | Story 2.1 AC, E2E-03 | Unit + E2E | Pending |
-| R-09 | API error handling | Story 1.2 AC, IT-05 | Unit + integration | Pending |
-| R-10 | 429 kill engagement | Story 1.2 AC, IT-05, E2E-04 | Unit + integration + E2E | Pending |
-| R-11 | Token fallback chain | Story 1.2 AC, IT-01 | Unit + integration | Pending |
-| R-12 | discord.json config | Story 1.2 AC, IT-02 | Unit + integration | Pending |
-| R-13 | Invalid JSON warning | Story 1.2 AC, IT-02 | Unit + integration | Pending |
-| R-14 | Kill — timed active | Story 1.2 AC, IT-03, E2E-04 | Unit + integration + E2E | Pending |
-| R-15 | Kill — manual | Story 1.2 AC, IT-03, E2E-04 | Unit + integration + E2E | Pending |
-| R-16 | Kill — auto-clear | Story 1.2 AC, IT-03 | Unit + integration | Pending |
-| R-17 | 3-platform binary | Story 1.1 AC, MV-01 | Build + manual | Pending |
-| R-18 | mcps.json registration | Story 3.1 AC, MV-01 | Inspection + manual | Pending |
-| R-19 | Skill stub ≤25 lines | Story 3.1 AC, MV-01 | Inspection + manual | Pending |
+| R-01 | disc_send tool | `send.ts` implements `handleSend`; all 5 unit tests in `tests/send.test.ts` pass; IT-06 routes `disc_send` to real handler; E2E-01 confirms live message delivery | Unit + integration + E2E | PASS |
+| R-02 | disc_read tool | `read.ts` implements `handleRead`; all 4 unit tests in `tests/read.test.ts` pass; IT-06 routes `disc_read`; E2E-01 confirms read-back of sent message | Unit + integration + E2E | PASS |
+| R-03 | disc_list tool | `list.ts` implements `handleList`; unit tests in `tests/list.test.ts` pass; E2E-05 lists known guild channels and verifies expected channels present | Unit + E2E | PASS |
+| R-04 | disc_resolve tool | `resolve.ts` implements `handleResolve`; unit tests in `tests/resolve.test.ts` pass; E2E-02 resolves test channel by name and sends to resolved ID | Unit + E2E | PASS |
+| R-05 | disc_create_channel | `create_channel.ts` implements `handleCreateChannel`; all 3 unit tests in `tests/create_channel.test.ts` pass; E2E-07 creates channel, verifies in `disc_list`, cleans up | Unit + E2E | PASS |
+| R-06 | disc_create_thread | `create_thread.ts` implements `handleCreateThread`; all 3 unit tests in `tests/create_thread.test.ts` pass; E2E-06 creates thread and reads thread messages | Unit + E2E | PASS |
+| R-07 | Message auto-split | `send.ts:splitMessage()` splits on last whitespace before 2000 chars; `send — split 2-part` test confirms 2-call behavior and `(1/2)`/`(2/2)` labels; IT-04 validates split boundary | Unit + integration | PASS |
+| R-08 | File attachment | `send.ts` uses `FormData` with `files[0]` field when `attach_path` provided; `send — attach path` unit test confirms multipart path; E2E-03 sends file and verifies attachment URL in response | Unit + E2E | PASS |
+| R-09 | API error handling | `api.ts:discordFetch()` returns `{ ok: false, error: "HTTP {status}: {body}" }` on 4xx/5xx; `api — 4xx returns error string` test confirms format; IT-05 validates cross-module behavior | Unit + integration | PASS |
+| R-10 | 429 kill engagement | `api.ts` calls `engageKillSwitch(Date.now() + 30*60*1000)` on 429; `api — 429 engages kill switch` test confirms kill file written; IT-05 validates; E2E-04 verifies kill lifecycle | Unit + integration + E2E | PASS |
+| R-11 | Token fallback chain | `config.ts:getToken()` checks `DISCORD_BOT_TOKEN` env, then `~/secrets/discord-bot-token` file, then throws; all 3 token tests in `tests/config.test.ts` pass; IT-01 validates full chain | Unit + integration | PASS |
+| R-12 | discord.json config | `config.ts:loadDiscordConfig()` reads `~/.claude/discord.json` and caches; `getConfigValue()` applies 3-step fallback; `config — json overrides defaults` test confirms precedence; IT-02 validates | Unit + integration | PASS |
+| R-13 | Invalid JSON warning | `config.ts` catches JSON parse error, writes warning to stderr, returns `{}`; `config — invalid json falls back` test confirms warning and empty object; IT-02 covers this path | Unit + integration | PASS |
+| R-14 | Kill — timed active | `kill.ts:checkKillSwitch()` returns `{ active: true }` when file contains future timestamp; `kill — timed kill active` test confirmed; IT-03 lifecycle test passes; E2E-04 validates | Unit + integration + E2E | PASS |
+| R-15 | Kill — manual | `kill.ts:checkKillSwitch()` returns `{ active: true, reason: "manual kill" }` for empty file or non-numeric content; `kill — manual kill active` test confirmed; IT-03 and E2E-04 pass | Unit + integration + E2E | PASS |
+| R-16 | Kill — auto-clear | `kill.ts:checkKillSwitch()` calls `unlinkSync(KILL_FILE)` when timestamp is in the past; `kill — expired kill clears` test confirms file removed and `active: false` returned; IT-03 covers this path | Unit + integration | PASS |
+| R-17 | 3-platform binary | `scripts/ci/build.sh` builds `disc-server-linux-x64`, `disc-server-darwin-arm64`, `disc-server-darwin-x64` via `bun build --compile`; CI build stage produces all 3 artifacts; MV-01 executed | Build + manual | PASS |
+| R-18 | mcps.json registration | `claudecode-workflow/mcps.json` contains `disc-server` entry with `install_url` pointing to `scripts/install-remote.sh`; Story 3.1 AC verified by inspection; MV-01 confirms MCP registration in `~/.claude.json` | Inspection + manual | PASS |
+| R-19 | Skill stub ≤25 lines | `skills/disc/SKILL.md` in `claudecode-workflow` is ≤25 lines; contains no bash code blocks or curl patterns; routes all intents to `disc_*` MCP tools; Story 3.1 AC verified by inspection; MV-01 confirms routing in live session | Inspection + manual | PASS |
