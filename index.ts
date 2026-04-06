@@ -13,6 +13,7 @@ import { handleSend } from "./send.ts";
 import { handleRead } from "./read.ts";
 import { handleList } from "./list.ts";
 import { handleResolve } from "./resolve.ts";
+import { handleCreateChannel } from "./create_channel.ts";
 
 const KILL_SWITCH_PATH = join(homedir(), ".claude", "discord-bot.kill");
 
@@ -167,7 +168,7 @@ const HANDLERS: Record<
   disc_read: async (params) => handleRead(params),
   disc_list: handleList,
   disc_resolve: handleResolve,
-  disc_create_channel: async (_params) => "not implemented",
+  disc_create_channel: handleCreateChannel,
   disc_create_thread: async (_params) => "not implemented",
 };
 
