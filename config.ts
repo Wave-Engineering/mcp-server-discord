@@ -4,7 +4,7 @@
  * Provides:
  *  - loadDiscordConfig()     — reads ~/.claude/discord.json, caches result
  *  - getConfigValue()        — 3-step fallback: json → env → hardcoded default
- *  - getToken()              — DISCORD_BOT_TOKEN env → ~/secrets/discord-bot-token file → throws
+ *  - getToken()              — DISCORD_BOT_TOKEN env → $DISCORD_TOKEN_FILE (default ~/secrets/discord-bot-token) → throws
  *  - Hardcoded defaults: DEFAULT_GUILD_ID, DEFAULT_CHANNEL_ID, DEFAULT_ROLL_CALL_ID
  */
 
@@ -104,12 +104,26 @@ export function getConfigValue(
 // Token resolution
 // ---------------------------------------------------------------------------
 
-const TOKEN_FILE_PATH = join(homedir(), "secrets", "discord-bot-token");
+export const DEFAULT_TOKEN_FILE_PATH = join(homedir(), "secrets", "discord-bot-token");
+
+/**
+ * Resolve the path to the token file.
+ * Honors $DISCORD_TOKEN_FILE if set; otherwise falls back to the default
+ * (~/secrets/discord-bot-token). Resolved at call time so env changes
+ * after module load are still picked up.
+ */
+function resolveTokenFilePath(): string {
+  const override = process.env.DISCORD_TOKEN_FILE;
+  if (override !== undefined && override !== "") {
+    return override;
+  }
+  return DEFAULT_TOKEN_FILE_PATH;
+}
 
 /**
  * Resolve the Discord bot token:
- *   1. DISCORD_BOT_TOKEN environment variable
- *   2. ~/secrets/discord-bot-token file
+ *   1. DISCORD_BOT_TOKEN environment variable (token value)
+ *   2. File at $DISCORD_TOKEN_FILE (default ~/secrets/discord-bot-token)
  *
  * Throws if neither source provides a non-empty value.
  */
@@ -119,8 +133,9 @@ export function getToken(): string {
     return envToken;
   }
 
-  if (existsSync(TOKEN_FILE_PATH)) {
-    const fileToken = readFileSync(TOKEN_FILE_PATH, "utf-8").trim();
+  const tokenFilePath = resolveTokenFilePath();
+  if (existsSync(tokenFilePath)) {
+    const fileToken = readFileSync(tokenFilePath, "utf-8").trim();
     if (fileToken !== "") {
       return fileToken;
     }
