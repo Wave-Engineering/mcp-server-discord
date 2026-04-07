@@ -27,6 +27,12 @@ chmod 600 ~/secrets/discord-bot-token
 
 Alternatively, export `DISCORD_BOT_TOKEN` in your shell environment.
 
+If your token file lives somewhere other than `~/secrets/discord-bot-token`, set `DISCORD_TOKEN_FILE` to override the path:
+
+```bash
+export DISCORD_TOKEN_FILE=~/secrets/discord-cc-dev-bot-account
+```
+
 **Step 3 — Use `/disc` in Claude Code**
 
 Start a Claude Code session and invoke the `/disc` skill:
@@ -279,7 +285,7 @@ The server reads `~/.claude/discord.json` for guild and channel defaults. All fi
 
 ```
 DISCORD_BOT_TOKEN env var
-  └─► ~/secrets/discord-bot-token file
+  └─► File at $DISCORD_TOKEN_FILE (default ~/secrets/discord-bot-token)
         └─► Error: "Discord bot token not found"
 ```
 

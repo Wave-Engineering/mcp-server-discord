@@ -149,4 +149,33 @@ describe("config", () => {
 
     expect(() => getToken()).toThrow("Discord bot token not found");
   });
+
+  test("token from $DISCORD_TOKEN_FILE override", () => {
+    delete process.env.DISCORD_BOT_TOKEN;
+    // Use a temp path that does NOT collide with the default location.
+    // This protects systems where ~/secrets/discord-bot-token is a real
+    // production token file or symlink that must not be touched.
+    const overridePath = join(homedir(), ".cache", "test-disc-token-override");
+    mkdirSync(join(homedir(), ".cache"), { recursive: true });
+    writeFileSync(overridePath, "override-token-from-env-var\n", "utf-8");
+    process.env.DISCORD_TOKEN_FILE = overridePath;
+
+    try {
+      const token = getToken();
+      expect(token).toBe("override-token-from-env-var");
+    } finally {
+      delete process.env.DISCORD_TOKEN_FILE;
+      if (existsSync(overridePath)) unlinkSync(overridePath);
+    }
+  });
+
+  test("$DISCORD_TOKEN_FILE override is empty string falls back to default path", () => {
+    delete process.env.DISCORD_BOT_TOKEN;
+    process.env.DISCORD_TOKEN_FILE = "";
+    writeTokenFile("default-path-token\n");
+
+    const token = getToken();
+    expect(token).toBe("default-path-token");
+    delete process.env.DISCORD_TOKEN_FILE;
+  });
 });
