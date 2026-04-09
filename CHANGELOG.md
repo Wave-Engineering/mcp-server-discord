@@ -23,3 +23,7 @@ Initial release of `mcp-server-discord` — a Bun/TypeScript MCP server that exp
 - `disc/SKILL.md` reduced to a ≤25-line routing stub — no bash snippets or API call patterns.
 
 ## [Unreleased]
+
+### Fixed
+
+- **`disc_send`** — Fixed message splitting bug where labeled chunks could exceed 2000 chars on content-dense input (markdown tables, code blocks). The splitter now accounts for label overhead (`(N/M) `) before splitting, ensuring all labeled chunks stay within Discord's 2000-char limit. Fixes #37.

@@ -93,15 +93,29 @@ export async function handleSend(
     return killError(killState);
   }
 
-  // Split message into ≤2000-char raw chunks
-  const rawChunks = splitMessage(message, MAX_CHUNK);
-  const n = rawChunks.length;
+  // Split message into chunks, accounting for label overhead
+  // First, do a tentative split to count how many chunks we'll need
+  const tentativeChunks = splitMessage(message, MAX_CHUNK);
 
-  // Label each chunk if there are multiple
-  const labeledChunks =
-    n === 1
-      ? rawChunks
-      : rawChunks.map((chunk, i) => `(${i + 1}/${n}) ${chunk}`);
+  let labeledChunks: string[];
+  let n: number; // Total number of chunks (for return message)
+
+  if (tentativeChunks.length === 1) {
+    // Single chunk — no labels needed, use as-is
+    labeledChunks = tentativeChunks;
+    n = 1;
+  } else {
+    // Multiple chunks — need to add labels like "(1/N) ", "(2/N) ", etc.
+    // Label format: "(N/M) " where N and M can grow with message size
+    // Worst case up to 999 chunks: "(999/999) " = 11 chars
+    // Use 12 chars to include safety margin
+    const LABEL_OVERHEAD = 12;
+
+    // Re-split with reduced maxLen to ensure labeled chunks fit under MAX_CHUNK
+    const rawChunks = splitMessage(message, MAX_CHUNK - LABEL_OVERHEAD);
+    n = rawChunks.length;
+    labeledChunks = rawChunks.map((chunk, i) => `(${i + 1}/${n}) ${chunk}`);
+  }
 
   // Send all chunks except the last via plain JSON
   for (let i = 0; i < labeledChunks.length - 1; i++) {

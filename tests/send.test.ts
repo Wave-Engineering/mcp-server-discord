@@ -194,4 +194,80 @@ describe("disc_send — handleSend", () => {
     const { body } = calls[0].init;
     expect(body).toBeInstanceOf(FormData);
   });
+
+  // ---------------------------------------------------------------------------
+  // Test 6: content-dense markdown splitting (regression test for #37)
+  // ---------------------------------------------------------------------------
+  test("send — content-dense markdown stays under 2000 chars per labeled chunk", async () => {
+    const calls: { url: string; init: RequestInit }[] = [];
+
+    globalThis.fetch = mock(async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify({ id: "msg-1" }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const { handleSend } = await import("../send.ts");
+
+    // Build a ~4500-char markdown table (content-dense: few word boundaries)
+    // This is the scenario reported in #37 by @percolator and cc-workflow orchestrator
+    const tableHeader = "| Column A | Column B | Column C | Column D | Column E |\n";
+    const tableSep = "|----------|----------|----------|----------|----------|\n";
+    const tableRow = "| Value 1234 | Value 5678 | Value 9012 | Value 3456 | Value 7890 |\n";
+
+    // Each row is ~69 chars. To get ~4500 chars, we need ~65 rows.
+    const tableBody = tableRow.repeat(65);
+    const message = tableHeader + tableSep + tableBody; // ~4500 chars
+
+    expect(message.length).toBeGreaterThan(4000); // Sanity check
+
+    const result = await handleSend({
+      channel_id: "999",
+      message,
+    });
+
+    expect(result).toContain("999");
+    expect(calls.length).toBeGreaterThan(1); // Should split into multiple chunks
+
+    // CRITICAL ASSERTION: Every chunk sent to Discord API must be ≤2000 chars
+    for (let i = 0; i < calls.length; i++) {
+      const body = JSON.parse(calls[i].init.body as string);
+      const content = body.content as string;
+      expect(content.length).toBeLessThanOrEqual(2000);
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // Test 7: 100+ chunks edge case (regression test for label overhead)
+  // ---------------------------------------------------------------------------
+  test("send — 100+ chunks with label overhead stays under limit", async () => {
+    const calls: { url: string; init: RequestInit }[] = [];
+
+    globalThis.fetch = mock(async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify({ id: "msg-1" }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const { handleSend } = await import("../send.ts");
+
+    // Build a ~200KB message that will produce 100+ chunks
+    // At 1988 chars per chunk (2000 - 12 label overhead), we need ~100 chunks for 198,800 chars
+    const largeMessage = "x".repeat(200000);
+
+    expect(largeMessage.length).toBeGreaterThan(198000); // Sanity check
+
+    const result = await handleSend({
+      channel_id: "888",
+      message: largeMessage,
+    });
+
+    expect(result).toContain("888");
+    expect(calls.length).toBeGreaterThanOrEqual(100); // Should produce 100+ chunks
+
+    // CRITICAL ASSERTION: Every chunk must be ≤2000 chars, even at 100+ chunk boundary
+    for (let i = 0; i < calls.length; i++) {
+      const body = JSON.parse(calls[i].init.body as string);
+      const content = body.content as string;
+      expect(content.length).toBeLessThanOrEqual(2000);
+    }
+  });
 });
