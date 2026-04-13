@@ -7,6 +7,7 @@
  */
 
 import { discordFetch, isScreamHole } from "./api.ts";
+import { resolveChannelId } from "./channel.ts";
 import { checkKillSwitch, killError } from "./kill.ts";
 import { log } from "./logger.ts";
 
@@ -49,10 +50,14 @@ export async function handleRead(
     return killError(kill);
   }
 
-  // Extract and validate channel_id
-  const channel_id = params.channel_id;
-  if (typeof channel_id !== "string" || channel_id.trim() === "") {
+  // Extract and validate channel_id (accepts snowflake ID or channel name)
+  const rawChannel = params.channel_id;
+  if (typeof rawChannel !== "string" || rawChannel.trim() === "") {
     return "Error: channel_id is required";
+  }
+  const channel_id = resolveChannelId(rawChannel);
+  if (!channel_id) {
+    return `Error: unknown channel "${rawChannel}" — not found in ~/.claude/discord.json channels map`;
   }
 
   // Extract and clamp limit
