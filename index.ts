@@ -15,6 +15,7 @@ import { handleList } from "./list.ts";
 import { handleResolve } from "./resolve.ts";
 import { handleCreateChannel } from "./create_channel.ts";
 import { handleCreateThread } from "./create_thread.ts";
+import { log } from "./logger.ts";
 
 const KILL_SWITCH_PATH = join(homedir(), ".claude", "discord-bot.kill");
 
@@ -177,12 +178,12 @@ const HANDLERS: Record<
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 
 if (!DISCORD_TOKEN) {
-  process.stderr.write("Warning: DISCORD_TOKEN not set — tools will not function\n");
+  log.warn("startup", { config: { token_set: false } }, "DISCORD_TOKEN not set — tools will not function");
 }
 
 // Check kill switch on startup
 if (existsSync(KILL_SWITCH_PATH)) {
-  process.stderr.write(`Kill switch active: ${KILL_SWITCH_PATH} — disc-server refusing to start\n`);
+  log.error("startup", { config: { kill_switch: true } }, "Kill switch active — disc-server refusing to start");
   process.exit(1);
 }
 
@@ -190,6 +191,8 @@ const server = new Server(
   { name: "disc-server", version: "1.0.0" },
   { capabilities: { tools: {} } }
 );
+
+log.info("startup", { version: "1.0.0", config: { tools: TOOLS.length, kill_switch: false } });
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: TOOLS,

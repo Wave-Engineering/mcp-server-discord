@@ -7,6 +7,7 @@
 
 import { discordFetch } from "./api.ts";
 import { checkKillSwitch, killError } from "./kill.ts";
+import { log } from "./logger.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,9 +32,12 @@ interface DiscordChannel {
 export async function handleCreateChannel(
   params: Record<string, unknown>
 ): Promise<string> {
+  const startMs = Date.now();
+
   // Check kill switch
   const kill = checkKillSwitch();
   if (kill.active) {
+    log.warn("tool_call", { tool: "disc_create_channel", ok: false, ms: 0, error: "kill_switch_active" });
     return killError(kill);
   }
 
@@ -85,9 +89,13 @@ export async function handleCreateChannel(
   );
 
   if (!result.ok) {
+    const ms = Date.now() - startMs;
+    log.warn("tool_call", { tool: "disc_create_channel", ok: false, ms, error: result.error });
     return `Error: ${result.error}`;
   }
 
   const newChannel = result.data;
+  const ms = Date.now() - startMs;
+  log.info("tool_call", { tool: "disc_create_channel", ok: true, ms });
   return `Created channel #${sanitizedName} (${newChannel.id})`;
 }

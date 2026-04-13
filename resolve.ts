@@ -7,6 +7,7 @@
 
 import { discordFetch } from "./api.ts";
 import { checkKillSwitch, killError } from "./kill.ts";
+import { log } from "./logger.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,9 +32,12 @@ interface DiscordChannel {
 export async function handleResolve(
   params: Record<string, unknown>
 ): Promise<string> {
+  const startMs = Date.now();
+
   // Check kill switch
   const kill = checkKillSwitch();
   if (kill.active) {
+    log.warn("tool_call", { tool: "disc_resolve", ok: false, ms: 0, error: "kill_switch_active" });
     return killError(kill);
   }
 
@@ -50,6 +54,8 @@ export async function handleResolve(
   );
 
   if (!result.ok) {
+    const ms = Date.now() - startMs;
+    log.warn("tool_call", { tool: "disc_resolve", ok: false, ms, error: result.error });
     return `Error: ${result.error}`;
   }
 
@@ -61,8 +67,12 @@ export async function handleResolve(
   );
 
   if (!match) {
+    const ms = Date.now() - startMs;
+    log.warn("tool_call", { tool: "disc_resolve", ok: false, ms, error: "channel_not_found" });
     return `Channel '#${normalizedName}' not found in guild`;
   }
 
+  const ms = Date.now() - startMs;
+  log.info("tool_call", { tool: "disc_resolve", ok: true, ms });
   return match.id;
 }
