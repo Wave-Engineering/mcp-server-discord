@@ -11,7 +11,7 @@
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { getToken } from "./config.ts";
-import { DISCORD_BASE } from "./api.ts";
+import { getDiscordBase, resolveApiBase } from "./api.ts";
 import { discordFetch } from "./api.ts";
 import { checkKillSwitch, killError } from "./kill.ts";
 import { log } from "./logger.ts";
@@ -160,7 +160,8 @@ export async function handleSend(
     let response: Response;
     const attachStartMs = Date.now();
     try {
-      response = await fetch(`${DISCORD_BASE}/channels/${channel_id}/messages`, {
+      await resolveApiBase();
+      response = await fetch(`${getDiscordBase()}/channels/${channel_id}/messages`, {
         method: "POST",
         headers: { Authorization: `Bot ${token}` },
         body: form,

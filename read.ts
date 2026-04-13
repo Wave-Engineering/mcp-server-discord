@@ -6,7 +6,7 @@
  * Output is chronological (oldest first — Discord API returns newest first).
  */
 
-import { discordFetch } from "./api.ts";
+import { discordFetch, isScreamHole } from "./api.ts";
 import { checkKillSwitch, killError } from "./kill.ts";
 import { log } from "./logger.ts";
 
@@ -65,8 +65,13 @@ export async function handleRead(
   }
 
   // Fetch messages from Discord API
+  // Scream-hole requires after=SNOWFLAKE on message reads (returns 400 without it).
+  // When routing through scream-hole, always pass after=0 to fetch all cached messages.
+  const qs = isScreamHole()
+    ? `?limit=${limit}&after=0`
+    : `?limit=${limit}`;
   const result = await discordFetch<DiscordMessage[]>(
-    `/channels/${channel_id}/messages?limit=${limit}`
+    `/channels/${channel_id}/messages${qs}`
   );
 
   if (!result.ok) {

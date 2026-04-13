@@ -9,6 +9,7 @@ import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { resolveApiBase } from "./api.ts";
 import { handleSend } from "./send.ts";
 import { handleRead } from "./read.ts";
 import { handleList } from "./list.ts";
@@ -193,6 +194,9 @@ const server = new Server(
 );
 
 log.info("startup", { version: "1.0.0", config: { tools: TOOLS.length, kill_switch: false } });
+
+// Resolve API base URL (scream-hole or direct Discord) and log the decision
+await resolveApiBase();
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: TOOLS,
