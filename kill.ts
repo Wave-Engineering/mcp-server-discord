@@ -11,6 +11,7 @@
 import { existsSync, readFileSync, writeFileSync, unlinkSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { log } from "./logger.ts";
 
 export const KILL_FILE = join(homedir(), ".claude", "discord-bot.kill");
 
@@ -61,6 +62,7 @@ export function checkKillSwitch(): KillState {
     } catch {
       // Ignore deletion errors (race condition, already deleted)
     }
+    log.info("state_change", { what: "kill_switch", from: "engaged", to: "expired" });
     return { active: false, reason: "" };
   }
 
@@ -81,6 +83,14 @@ export function engageKillSwitch(expiryMs?: number): void {
   const content =
     expiryMs !== undefined && expiryMs > 0 ? String(expiryMs) : "";
   writeFileSync(KILL_FILE, content, "utf-8");
+  log.warn("state_change", {
+    what: "kill_switch",
+    to: "engaged",
+    reason: "429",
+    ...(expiryMs !== undefined && expiryMs > 0
+      ? { expires_at: new Date(expiryMs).toISOString() }
+      : {}),
+  });
 }
 
 // ---------------------------------------------------------------------------

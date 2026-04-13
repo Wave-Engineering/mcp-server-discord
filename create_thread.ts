@@ -6,6 +6,7 @@
 
 import { discordFetch } from "./api.ts";
 import { checkKillSwitch, killError } from "./kill.ts";
+import { log } from "./logger.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,9 +57,12 @@ export async function handleCreateThread(
     return `Error: auto_archive must be one of ${VALID_AUTO_ARCHIVE.join(", ")}`;
   }
 
+  const startMs = Date.now();
+
   // Check kill switch
   const kill = checkKillSwitch();
   if (kill.active) {
+    log.warn("tool_call", { tool: "disc_create_thread", ok: false, ms: 0, error: "kill_switch_active" });
     return killError(kill);
   }
 
@@ -76,9 +80,13 @@ export async function handleCreateThread(
   );
 
   if (!result.ok) {
+    const ms = Date.now() - startMs;
+    log.warn("tool_call", { tool: "disc_create_thread", ok: false, ms, error: result.error });
     return `Error: ${result.error}`;
   }
 
   const thread = result.data;
+  const ms = Date.now() - startMs;
+  log.info("tool_call", { tool: "disc_create_thread", ok: true, ms });
   return `Created thread '${name}' (${thread.id})`;
 }

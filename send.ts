@@ -14,6 +14,7 @@ import { getToken } from "./config.ts";
 import { DISCORD_BASE } from "./api.ts";
 import { discordFetch } from "./api.ts";
 import { checkKillSwitch, killError } from "./kill.ts";
+import { log } from "./logger.ts";
 
 const MAX_CHUNK = 2000;
 
@@ -82,6 +83,7 @@ function parseEmbed(embed: string): { title: string; description: string } {
 export async function handleSend(
   params: Record<string, unknown>
 ): Promise<string> {
+  const startMs = Date.now();
   const channel_id = params.channel_id as string;
   const message = params.message as string;
   const embed = params.embed as string | undefined;
@@ -90,6 +92,7 @@ export async function handleSend(
   // Kill switch check
   const killState = checkKillSwitch();
   if (killState.active) {
+    log.warn("tool_call", { tool: "disc_send", ok: false, ms: 0, error: "kill_switch_active" });
     return killError(killState);
   }
 
@@ -124,6 +127,8 @@ export async function handleSend(
       body: JSON.stringify({ content: labeledChunks[i] }),
     });
     if (!result.ok) {
+      const ms = Date.now() - startMs;
+      log.warn("tool_call", { tool: "disc_send", ok: false, ms, error: result.error });
       return `Error sending chunk ${i + 1}/${n}: ${result.error}`;
     }
   }
@@ -153,6 +158,7 @@ export async function handleSend(
     form.append("files[0]", new Blob([fileBytes]), fileName);
 
     let response: Response;
+    const attachStartMs = Date.now();
     try {
       response = await fetch(`${DISCORD_BASE}/channels/${channel_id}/messages`, {
         method: "POST",
@@ -160,14 +166,25 @@ export async function handleSend(
         body: form,
       });
     } catch (err) {
+      const attachMs = Date.now() - attachStartMs;
+      log.error("api_call", { method: "POST", endpoint: `/channels/${channel_id}/messages`, status: 0, ms: attachMs, service: "discord" }, err instanceof Error ? err.message : String(err));
+      const ms = Date.now() - startMs;
+      log.warn("tool_call", { tool: "disc_send", ok: false, ms, error: `Network error: ${err instanceof Error ? err.message : String(err)}` });
       return `Network error: ${err instanceof Error ? err.message : String(err)}`;
     }
 
+    const attachMs = Date.now() - attachStartMs;
     if (!response.ok) {
+      log.error("api_call", { method: "POST", endpoint: `/channels/${channel_id}/messages`, status: response.status, ms: attachMs, service: "discord" });
       const body = await response.text().catch(() => "");
+      const ms = Date.now() - startMs;
+      log.warn("tool_call", { tool: "disc_send", ok: false, ms, error: `HTTP ${response.status}: ${body}`.trim() });
       return `Error sending attachment: HTTP ${response.status}: ${body}`.trim();
     }
 
+    log.info("api_call", { method: "POST", endpoint: `/channels/${channel_id}/messages`, status: response.status, ms: attachMs, service: "discord" });
+    const ms = Date.now() - startMs;
+    log.info("tool_call", { tool: "disc_send", ok: true, ms, chunks: n });
     return `Message sent to ${channel_id} (${n} chunk${n !== 1 ? "s" : ""}, with attachment)`;
   }
 
@@ -184,8 +201,12 @@ export async function handleSend(
   });
 
   if (!result.ok) {
+    const ms = Date.now() - startMs;
+    log.warn("tool_call", { tool: "disc_send", ok: false, ms, error: result.error });
     return `Error sending message: ${result.error}`;
   }
 
+  const ms = Date.now() - startMs;
+  log.info("tool_call", { tool: "disc_send", ok: true, ms, chunks: n });
   return `Message sent to ${channel_id} (${n} chunk${n !== 1 ? "s" : ""})`;
 }

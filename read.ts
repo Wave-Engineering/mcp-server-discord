@@ -8,6 +8,7 @@
 
 import { discordFetch } from "./api.ts";
 import { checkKillSwitch, killError } from "./kill.ts";
+import { log } from "./logger.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,9 +40,12 @@ const MAX_LIMIT = 100;
 export async function handleRead(
   params: Record<string, unknown>
 ): Promise<string> {
+  const startMs = Date.now();
+
   // Check kill switch
   const kill = checkKillSwitch();
   if (kill.active) {
+    log.warn("tool_call", { tool: "disc_read", ok: false, ms: 0, error: "kill_switch_active" });
     return killError(kill);
   }
 
@@ -66,12 +70,16 @@ export async function handleRead(
   );
 
   if (!result.ok) {
+    const ms = Date.now() - startMs;
+    log.warn("tool_call", { tool: "disc_read", ok: false, ms, error: result.error });
     return `Error: ${result.error}`;
   }
 
   const messages = result.data;
 
   if (!Array.isArray(messages) || messages.length === 0) {
+    const ms = Date.now() - startMs;
+    log.info("tool_call", { tool: "disc_read", ok: true, ms, messages: 0 });
     return "No messages found";
   }
 
@@ -82,5 +90,7 @@ export async function handleRead(
     (msg) => `[${msg.timestamp}] <${msg.author.username}>: ${msg.content}`
   );
 
+  const ms = Date.now() - startMs;
+  log.info("tool_call", { tool: "disc_read", ok: true, ms, messages: messages.length });
   return lines.join("\n");
 }

@@ -8,6 +8,7 @@
 
 import { getToken } from "./config.ts";
 import { engageKillSwitch } from "./kill.ts";
+import { log } from "./logger.ts";
 
 export const DISCORD_BASE = "https://discord.com/api/v10";
 
@@ -40,6 +41,8 @@ export async function discordFetch<T = unknown>(
   options: RequestInit = {}
 ): Promise<DiscordResult<T>> {
   const token = getToken();
+  const method = (options.method ?? "GET").toUpperCase();
+  const startMs = Date.now();
 
   const headers = new Headers(options.headers as HeadersInit | undefined);
   headers.set("Authorization", `Bot ${token}`);
@@ -54,26 +57,34 @@ export async function discordFetch<T = unknown>(
       headers,
     });
   } catch (err) {
+    const ms = Date.now() - startMs;
+    log.error("api_call", { method, endpoint: path, status: 0, ms, service: "discord" }, err instanceof Error ? err.message : String(err));
     return {
       ok: false,
       error: `Network error: ${err instanceof Error ? err.message : String(err)}`,
     };
   }
 
+  const ms = Date.now() - startMs;
+
   if (response.status === 429) {
-    // Rate-limited — engage kill switch for 30 minutes
-    const expiryMs = Date.now() + 30 * 60 * 1000;
+    // Rate-limited — honor Discord's Retry-After (usually 1-5s) + 5s buffer
+    const retryAfter = parseFloat(response.headers.get("Retry-After") ?? "5");
+    const cooldownSec = Math.min(Math.ceil(retryAfter) + 5, 60); // cap at 60s
+    const expiryMs = Date.now() + cooldownSec * 1000;
+    log.warn("api_call", { method, endpoint: path, status: 429, ms, service: "discord", retry: retryAfter });
     engageKillSwitch(expiryMs);
 
     const body = await response.text().catch(() => "");
     return {
       ok: false,
-      error: `HTTP 429: rate limited — kill switch engaged. ${body}`.trim(),
+      error: `HTTP 429: rate limited — kill switch engaged for ${cooldownSec}s. ${body}`.trim(),
     };
   }
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
+    log.error("api_call", { method, endpoint: path, status: response.status, ms, service: "discord" });
     return {
       ok: false,
       error: `HTTP ${response.status}: ${body}`.trim(),
@@ -83,6 +94,7 @@ export async function discordFetch<T = unknown>(
   // Parse JSON response
   try {
     const data = (await response.json()) as T;
+    log.info("api_call", { method, endpoint: path, status: response.status, ms, service: "discord" });
     return { ok: true, data };
   } catch (err) {
     return {

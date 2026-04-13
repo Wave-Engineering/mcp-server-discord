@@ -7,6 +7,7 @@
 
 import { discordFetch } from "./api.ts";
 import { checkKillSwitch, killError } from "./kill.ts";
+import { log } from "./logger.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -44,9 +45,12 @@ const DEFAULT_TYPE = "text";
 export async function handleList(
   params: Record<string, unknown>
 ): Promise<string> {
+  const startMs = Date.now();
+
   // Check kill switch
   const kill = checkKillSwitch();
   if (kill.active) {
+    log.warn("tool_call", { tool: "disc_list", ok: false, ms: 0, error: "kill_switch_active" });
     return killError(kill);
   }
 
@@ -70,6 +74,8 @@ export async function handleList(
   );
 
   if (!result.ok) {
+    const ms = Date.now() - startMs;
+    log.warn("tool_call", { tool: "disc_list", ok: false, ms, error: result.error });
     return `Error: ${result.error}`;
   }
 
@@ -81,8 +87,12 @@ export async function handleList(
     .sort((a, b) => a.position - b.position);
 
   if (filtered.length === 0) {
+    const ms = Date.now() - startMs;
+    log.info("tool_call", { tool: "disc_list", ok: true, ms, channels: 0 });
     return "No channels found";
   }
 
+  const ms = Date.now() - startMs;
+  log.info("tool_call", { tool: "disc_list", ok: true, ms, channels: filtered.length });
   return filtered.map((ch) => `#${ch.name} (${ch.id})`).join("\n");
 }
