@@ -34,7 +34,7 @@ export const TOOLS: Tool[] = [
       properties: {
         channel_id: {
           type: "string",
-          description: "The Discord channel ID to send the message to",
+          description: "Discord channel ID or name (e.g. '1487288523638837268' or 'agent-ops' or '#agent-ops')",
         },
         message: {
           type: "string",
@@ -60,7 +60,7 @@ export const TOOLS: Tool[] = [
       properties: {
         channel_id: {
           type: "string",
-          description: "The Discord channel ID to read messages from",
+          description: "Discord channel ID or name (e.g. '1487288523638837268' or 'agent-ops' or '#agent-ops')",
         },
         limit: {
           type: "number",
@@ -143,7 +143,7 @@ export const TOOLS: Tool[] = [
       properties: {
         channel_id: {
           type: "string",
-          description: "The Discord channel ID to create the thread in",
+          description: "Discord channel ID or name (e.g. '1487288523638837268' or 'agent-ops' or '#agent-ops')",
         },
         name: {
           type: "string",

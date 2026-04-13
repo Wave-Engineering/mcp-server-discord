@@ -13,6 +13,7 @@ import { basename } from "node:path";
 import { getToken } from "./config.ts";
 import { getDiscordBase, resolveApiBase } from "./api.ts";
 import { discordFetch } from "./api.ts";
+import { resolveChannelId } from "./channel.ts";
 import { checkKillSwitch, killError } from "./kill.ts";
 import { log } from "./logger.ts";
 
@@ -84,7 +85,11 @@ export async function handleSend(
   params: Record<string, unknown>
 ): Promise<string> {
   const startMs = Date.now();
-  const channel_id = params.channel_id as string;
+  const rawChannel = params.channel_id as string;
+  const channel_id = resolveChannelId(rawChannel);
+  if (!channel_id) {
+    return `Error: unknown channel "${rawChannel}" — not found in ~/.claude/discord.json channels map`;
+  }
   const message = params.message as string;
   const embed = params.embed as string | undefined;
   const attach_path = params.attach_path as string | undefined;
