@@ -24,7 +24,21 @@ export const DEFAULT_ROLL_CALL_ID = "1234567890";
 // Config file loading
 // ---------------------------------------------------------------------------
 
-const CONFIG_PATH = join(homedir(), ".claude", "discord.json");
+/**
+ * Resolve the path to the discord.json config file at call time.
+ *
+ * Honors `$DISCORD_CONFIG_FILE` if set; otherwise falls back to the default
+ * `~/.claude/discord.json`. The env override exists so test harnesses can
+ * isolate the config file to a tmpdir without touching real user state —
+ * see #52 for the destructive-test incident this pattern prevents.
+ */
+function getConfigPath(): string {
+  const override = process.env.DISCORD_CONFIG_FILE;
+  if (override !== undefined && override !== "") {
+    return override;
+  }
+  return join(homedir(), ".claude", "discord.json");
+}
 
 let cachedConfig: Record<string, unknown> | null = null;
 let cacheLoaded = false;
@@ -40,13 +54,13 @@ export function loadDiscordConfig(): Record<string, unknown> {
 
   cacheLoaded = true;
 
-  if (!existsSync(CONFIG_PATH)) {
+  if (!existsSync(getConfigPath())) {
     cachedConfig = {};
     return cachedConfig;
   }
 
   try {
-    const raw = readFileSync(CONFIG_PATH, "utf-8");
+    const raw = readFileSync(getConfigPath(), "utf-8");
     cachedConfig = JSON.parse(raw) as Record<string, unknown>;
   } catch {
     process.stderr.write(
@@ -104,7 +118,25 @@ export function getConfigValue(
 // Token resolution
 // ---------------------------------------------------------------------------
 
-export const DEFAULT_TOKEN_FILE_PATH = join(homedir(), "secrets", "discord-bot-token");
+/**
+ * Resolve the default token file path (~/secrets/discord-bot-token) at call
+ * time.
+ *
+ * Computed lazily for the same reason as `getConfigPath()` — test harnesses
+ * override $HOME to a tmpdir, which only redirects `homedir()` when the path
+ * is resolved at call time. See #52.
+ */
+export function getDefaultTokenFilePath(): string {
+  return join(homedir(), "secrets", "discord-bot-token");
+}
+
+/**
+ * @deprecated Use `getDefaultTokenFilePath()` instead. Frozen-at-import-time
+ * value retained for backward compatibility with any external consumer that
+ * still imports the constant by name. New code should call the function so
+ * `$DISCORD_TOKEN_FILE` overrides and HOME changes are honored.
+ */
+export const DEFAULT_TOKEN_FILE_PATH = getDefaultTokenFilePath();
 
 /**
  * Resolve the path to the token file.
@@ -117,7 +149,7 @@ function resolveTokenFilePath(): string {
   if (override !== undefined && override !== "") {
     return override;
   }
-  return DEFAULT_TOKEN_FILE_PATH;
+  return getDefaultTokenFilePath();
 }
 
 /**
