@@ -27,3 +27,4 @@ Initial release of `mcp-server-discord` — a Bun/TypeScript MCP server that exp
 ### Fixed
 
 - **`disc_send`** — Fixed message splitting bug where labeled chunks could exceed 2000 chars on content-dense input (markdown tables, code blocks). The splitter now accounts for label overhead (`(N/M) `) before splitting, ensuring all labeled chunks stay within Discord's 2000-char limit. Fixes #37.
+- **`disc_send`** — Validate the body field before dereferencing. Prior callers that supplied a different field name (most commonly `content`, which is what the upstream Discord REST API itself uses) hit an opaque `text.length` crash inside `splitMessage`. The handler now (a) accepts `content` as an alias for `message`, and (b) returns a structured error naming the missing field plus what was actually received when neither is supplied. Schema in `index.ts` documents the alias. Fixes #50.

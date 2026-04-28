@@ -90,7 +90,16 @@ export async function handleSend(
   if (!channel_id) {
     return `Error: unknown channel "${rawChannel}" — not found in ~/.claude/discord.json channels map`;
   }
-  const message = params.message as string;
+  // Accept `content` as alias for `message`. The upstream Discord REST API
+  // uses `content`, so it's the dominant convention agents guess. The schema
+  // continues to advertise `message` as canonical; alias is for tolerance.
+  const message = (params.message ?? params.content) as string | undefined;
+  if (typeof message !== "string" || message.length === 0) {
+    const received = Object.keys(params).join(", ") || "no fields";
+    const err = `Error: missing required field 'message' (received: ${received}). Accepted aliases: 'content'.`;
+    log.warn("tool_call", { tool: "disc_send", ok: false, ms: Date.now() - startMs, error: "missing_message_field" });
+    return err;
+  }
   const embed = params.embed as string | undefined;
   const attach_path = params.attach_path as string | undefined;
 

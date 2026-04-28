@@ -270,4 +270,91 @@ describe("disc_send — handleSend", () => {
       expect(content.length).toBeLessThanOrEqual(2000);
     }
   });
+
+  // ---------------------------------------------------------------------------
+  // Regression: input-field handling (issue #50)
+  //
+  // Prior to #50 the handler did `params.message as string` with no validation,
+  // so any caller that supplied a different field name (e.g. `content`, which is
+  // what the upstream Discord REST API uses) hit an opaque crash inside
+  // splitMessage at `text.length`. The fix accepts `content` as an alias and
+  // returns a structured error for every other shape.
+  // ---------------------------------------------------------------------------
+  test("send — accepts 'content' as alias for 'message'", async () => {
+    const calls: { url: string; init: RequestInit }[] = [];
+
+    globalThis.fetch = mock(async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify({ id: "msg-1" }), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const { handleSend } = await import("../send.ts");
+
+    const result = await handleSend({
+      channel_id: "123",
+      content: "Hello via content alias",
+    });
+
+    expect(calls.length).toBe(1);
+    expect(result).toContain("1 chunk");
+
+    const body = JSON.parse(calls[0].init.body as string);
+    expect(body.content).toBe("Hello via content alias");
+  });
+
+  test("send — unknown body field returns structured error, never crashes", async () => {
+    let fetchCalled = false;
+    globalThis.fetch = mock(async () => {
+      fetchCalled = true;
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const { handleSend } = await import("../send.ts");
+
+    const result = await handleSend({
+      channel_id: "123",
+      body: "wrong field name",
+    });
+
+    expect(fetchCalled).toBe(false);
+    expect(result).toContain("missing required field 'message'");
+    expect(result).toContain("body"); // names what was actually received
+    expect(result).toContain("channel_id");
+  });
+
+  test("send — no body field at all returns structured error", async () => {
+    let fetchCalled = false;
+    globalThis.fetch = mock(async () => {
+      fetchCalled = true;
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const { handleSend } = await import("../send.ts");
+
+    const result = await handleSend({
+      channel_id: "123",
+    });
+
+    expect(fetchCalled).toBe(false);
+    expect(result).toContain("missing required field 'message'");
+    expect(result).toContain("channel_id");
+  });
+
+  test("send — empty message string returns structured error", async () => {
+    let fetchCalled = false;
+    globalThis.fetch = mock(async () => {
+      fetchCalled = true;
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const { handleSend } = await import("../send.ts");
+
+    const result = await handleSend({
+      channel_id: "123",
+      message: "",
+    });
+
+    expect(fetchCalled).toBe(false);
+    expect(result).toContain("missing required field 'message'");
+  });
 });

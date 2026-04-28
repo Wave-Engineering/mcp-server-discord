@@ -38,7 +38,11 @@ export const TOOLS: Tool[] = [
         },
         message: {
           type: "string",
-          description: "The message content to send",
+          description: "The message content to send (canonical name)",
+        },
+        content: {
+          type: "string",
+          description: "Alias for 'message'. Accepted for parity with the upstream Discord REST API; either 'message' or 'content' may be supplied.",
         },
         embed: {
           type: "string",
