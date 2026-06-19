@@ -112,6 +112,16 @@ export type DiscordResult<T = unknown> =
   | { ok: true; data: T }
   | { ok: false; error: string };
 
+/**
+ * Redact the secret token from a webhook-execute path before logging.
+ * `/webhooks/{id}/{token}` → `/webhooks/{id}/***`. The webhook token is a
+ * standalone bearer credential (anyone with the URL can post), so it must never
+ * land in `~/.claude/logs/mcp.jsonl`.
+ */
+export function redactWebhookToken(path: string): string {
+  return path.replace(/(\/webhooks\/[^/]+\/)[^/?]+/, "$1***");
+}
+
 // ---------------------------------------------------------------------------
 // discordFetch
 // ---------------------------------------------------------------------------
@@ -130,30 +140,35 @@ export type DiscordResult<T = unknown> =
  */
 export async function discordFetch<T = unknown>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit & { skipAuth?: boolean } = {}
 ): Promise<DiscordResult<T>> {
   // Ensure base URL has been resolved (no-op after first call)
   await resolveApiBase();
 
-  const token = getToken();
-  const method = (options.method ?? "GET").toUpperCase();
+  const { skipAuth, ...fetchOptions } = options;
+  const method = (fetchOptions.method ?? "GET").toUpperCase();
+  const logPath = redactWebhookToken(path); // never log webhook tokens
   const startMs = Date.now();
 
-  const headers = new Headers(options.headers as HeadersInit | undefined);
-  headers.set("Authorization", `Bot ${token}`);
-  if (!headers.has("Content-Type") && options.body !== undefined) {
+  const headers = new Headers(fetchOptions.headers as HeadersInit | undefined);
+  // Webhook EXECUTE (POST /webhooks/{id}/{token}) authenticates via the URL
+  // token, not the bot token — skipAuth omits the Bot header for those calls.
+  if (!skipAuth) {
+    headers.set("Authorization", `Bot ${getToken()}`);
+  }
+  if (!headers.has("Content-Type") && fetchOptions.body !== undefined) {
     headers.set("Content-Type", "application/json");
   }
 
   let response: Response;
   try {
     response = await fetch(`${DISCORD_BASE}${path}`, {
-      ...options,
+      ...fetchOptions,
       headers,
     });
   } catch (err) {
     const ms = Date.now() - startMs;
-    log.error("api_call", { method, endpoint: path, status: 0, ms, service: "discord" }, err instanceof Error ? err.message : String(err));
+    log.error("api_call", { method, endpoint: logPath, status: 0, ms, service: "discord" }, err instanceof Error ? err.message : String(err));
     return {
       ok: false,
       error: `Network error: ${err instanceof Error ? err.message : String(err)}`,
@@ -167,7 +182,7 @@ export async function discordFetch<T = unknown>(
     const retryAfter = parseFloat(response.headers.get("Retry-After") ?? "5");
     const cooldownSec = Math.min(Math.ceil(retryAfter) + 5, 60); // cap at 60s
     const expiryMs = Date.now() + cooldownSec * 1000;
-    log.warn("api_call", { method, endpoint: path, status: 429, ms, service: "discord", retry: retryAfter });
+    log.warn("api_call", { method, endpoint: logPath, status: 429, ms, service: "discord", retry: retryAfter });
     engageKillSwitch(expiryMs);
 
     const body = await response.text().catch(() => "");
@@ -179,7 +194,7 @@ export async function discordFetch<T = unknown>(
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
-    log.error("api_call", { method, endpoint: path, status: response.status, ms, service: "discord" });
+    log.error("api_call", { method, endpoint: logPath, status: response.status, ms, service: "discord" });
     return {
       ok: false,
       error: `HTTP ${response.status}: ${body}`.trim(),
@@ -189,7 +204,7 @@ export async function discordFetch<T = unknown>(
   // Parse JSON response
   try {
     const data = (await response.json()) as T;
-    log.info("api_call", { method, endpoint: path, status: response.status, ms, service: "discord" });
+    log.info("api_call", { method, endpoint: logPath, status: response.status, ms, service: "discord" });
     return { ok: true, data };
   } catch (err) {
     return {
