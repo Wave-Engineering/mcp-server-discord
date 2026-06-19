@@ -10,6 +10,7 @@ import { discordFetch, isScreamHole } from "./api.ts";
 import { resolveChannelId } from "./channel.ts";
 import { checkKillSwitch, killError } from "./kill.ts";
 import { log } from "./logger.ts";
+import { sanitizeSurrogates } from "./sanitize.ts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -96,8 +97,11 @@ export async function handleRead(
   // Discord returns newest-first — reverse for chronological output
   const chronological = [...messages].reverse();
 
+  // Sanitize inbound: a lone surrogate in a pulled message would 400 the
+  // reader's own next request once it lands in the transcript (see sanitize.ts).
   const lines = chronological.map(
-    (msg) => `[${msg.timestamp}] <${msg.author.username}>: ${msg.content}`
+    (msg) =>
+      `[${msg.timestamp}] <${sanitizeSurrogates(msg.author.username)}>: ${sanitizeSurrogates(msg.content)}`
   );
 
   const ms = Date.now() - startMs;
