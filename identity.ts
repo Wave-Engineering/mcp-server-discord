@@ -66,11 +66,11 @@ export function readAgentIdentity(): AgentIdentity | null {
  * Surrogate sanitization is applied by the caller (shared with `disc_send`).
  */
 export function webhookUsername(id: AgentIdentity): string {
-  let name = id.dev_avatar ? `${id.dev_name} ${id.dev_avatar}` : id.dev_name;
+  let name = (id.dev_avatar ? `${id.dev_name} ${id.dev_avatar}` : id.dev_name).trim();
   // Discord rejects webhook usernames containing "clyde" or "discord" — neutralize
   // the banned substrings without dropping characters (keeps the name recognizable).
   name = name.replace(/clyde/gi, "clyba").replace(/discord/gi, "disc0rd");
-  if (name.length > 80) name = name.slice(0, 80);
+  if (name.length > 80) name = name.slice(0, 80).trim();
   return name;
 }
 

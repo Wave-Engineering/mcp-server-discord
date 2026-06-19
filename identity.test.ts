@@ -31,6 +31,14 @@ describe("webhookUsername", () => {
     const long = "x".repeat(200);
     expect(webhookUsername({ dev_name: long }).length).toBe(80);
   });
+
+  test("trims surrounding whitespace", () => {
+    expect(webhookUsername({ dev_name: "  spacey  " })).toBe("spacey");
+  });
+
+  test("a whitespace-only name reduces to empty (send.ts then falls back to bot path)", () => {
+    expect(webhookUsername({ dev_name: "   " })).toBe("");
+  });
 });
 
 describe("webhookAvatarUrl", () => {

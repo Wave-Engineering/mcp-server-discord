@@ -10,7 +10,9 @@
 
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
-import { getToken } from "./config.ts";
+import { getToken, getConfigValue } from "./config.ts";
+import { readAgentIdentity, webhookUsername, webhookAvatarUrl } from "./identity.ts";
+import { executeWebhook } from "./webhook.ts";
 import { getDiscordBase, resolveApiBase } from "./api.ts";
 import { discordFetch } from "./api.ts";
 import { resolveChannelId } from "./channel.ts";
@@ -145,6 +147,45 @@ export async function handleSend(
   // would otherwise re-introduce lone halves AFTER the message-level sanitize.
   // (No length impact — a lone surrogate → U+FFFD is one code unit either way.)
   labeledChunks = labeledChunks.map(sanitizeSurrogates);
+
+  // Webhook identity path (#55): post as the agent's own username + avatar so a
+  // human juggling many agents can tell them apart. Gated behind config; skips
+  // when no /name identity exists or an attachment is present (attachments stay
+  // on the bot path for now). Text stays in `content` — agents read it normally.
+  const identity = readAgentIdentity();
+  const webhookFlag =
+    getConfigValue("webhook_identity", "DISC_WEBHOOK_IDENTITY", "") !== "";
+  // Empty/whitespace-only names (after sanitize + banned-substring neutralization)
+  // would make Discord reject the webhook execute — fall back to the bot path.
+  const username = identity ? sanitizeSurrogates(webhookUsername(identity)) : "";
+  if (webhookFlag && identity && username.length > 0 && !attach_path) {
+    const avatarUrl = webhookAvatarUrl(
+      identity.dev_name,
+      getConfigValue("webhook_avatar_style", "DISC_WEBHOOK_AVATAR_STYLE", "bottts")
+    );
+    let embeds: unknown[] | undefined;
+    if (embed) {
+      const { title, description } = parseEmbed(sanitizeSurrogates(embed));
+      embeds = [{ title, description }];
+    }
+    for (let i = 0; i < labeledChunks.length; i++) {
+      const isLast = i === labeledChunks.length - 1;
+      const res = await executeWebhook(channel_id, {
+        username,
+        avatarUrl,
+        content: labeledChunks[i],
+        embeds: isLast ? embeds : undefined,
+      });
+      if (!res.ok) {
+        const ms = Date.now() - startMs;
+        log.warn("tool_call", { tool: "disc_send", ok: false, ms, error: res.error });
+        return `Error sending chunk ${i + 1}/${n} via webhook: ${res.error}`;
+      }
+    }
+    const ms = Date.now() - startMs;
+    log.info("tool_call", { tool: "disc_send", ok: true, ms, chunks: n, identity: identity.dev_name });
+    return `Message sent to ${channel_id} as ${username} (${n} chunk${n !== 1 ? "s" : ""})`;
+  }
 
   // Send all chunks except the last via plain JSON
   for (let i = 0; i < labeledChunks.length - 1; i++) {
