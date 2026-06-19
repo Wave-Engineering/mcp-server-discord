@@ -16,6 +16,7 @@ import { discordFetch } from "./api.ts";
 import { resolveChannelId } from "./channel.ts";
 import { checkKillSwitch, killError } from "./kill.ts";
 import { log } from "./logger.ts";
+import { sanitizeSurrogates } from "./sanitize.ts";
 
 const MAX_CHUNK = 2000;
 
@@ -110,9 +111,14 @@ export async function handleSend(
     return killError(killState);
   }
 
+  // Sanitize outbound: never emit a lone surrogate that would jam another
+  // agent's session once it lands in their transcript (see sanitize.ts).
+  // Done before chunking so every part is clean.
+  const safeMessage = sanitizeSurrogates(message);
+
   // Split message into chunks, accounting for label overhead
   // First, do a tentative split to count how many chunks we'll need
-  const tentativeChunks = splitMessage(message, MAX_CHUNK);
+  const tentativeChunks = splitMessage(safeMessage, MAX_CHUNK);
 
   let labeledChunks: string[];
   let n: number; // Total number of chunks (for return message)
@@ -129,10 +135,16 @@ export async function handleSend(
     const LABEL_OVERHEAD = 12;
 
     // Re-split with reduced maxLen to ensure labeled chunks fit under MAX_CHUNK
-    const rawChunks = splitMessage(message, MAX_CHUNK - LABEL_OVERHEAD);
+    const rawChunks = splitMessage(safeMessage, MAX_CHUNK - LABEL_OVERHEAD);
     n = rawChunks.length;
     labeledChunks = rawChunks.map((chunk, i) => `(${i + 1}/${n}) ${chunk}`);
   }
+
+  // Belt-and-suspenders: re-sanitize each final chunk. splitMessage slices on
+  // UTF-16 code units, so a valid surrogate pair straddling a chunk boundary
+  // would otherwise re-introduce lone halves AFTER the message-level sanitize.
+  // (No length impact — a lone surrogate → U+FFFD is one code unit either way.)
+  labeledChunks = labeledChunks.map(sanitizeSurrogates);
 
   // Send all chunks except the last via plain JSON
   for (let i = 0; i < labeledChunks.length - 1; i++) {
@@ -154,13 +166,13 @@ export async function handleSend(
     // Multipart FormData for attachment
     const token = getToken();
     const fileBytes = readFileSync(attach_path);
-    const fileName = basename(attach_path);
+    const fileName = sanitizeSurrogates(basename(attach_path));
 
     const form = new FormData();
 
     const payload: Record<string, unknown> = { content: lastChunk };
     if (embed) {
-      const { title, description } = parseEmbed(embed);
+      const { title, description } = parseEmbed(sanitizeSurrogates(embed));
       payload.embeds = [{ title, description }];
     }
 
@@ -206,7 +218,7 @@ export async function handleSend(
   // Plain JSON last chunk (possibly with embed)
   const body: Record<string, unknown> = { content: lastChunk };
   if (embed) {
-    const { title, description } = parseEmbed(embed);
+    const { title, description } = parseEmbed(sanitizeSurrogates(embed));
     body.embeds = [{ title, description }];
   }
 
