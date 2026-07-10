@@ -32,11 +32,22 @@ interface DiscordMessage {
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
+const SNOWFLAKE_RE = /^\d+$/;
+
+/**
+ * Format one Discord message as a digest line: `[{ISO timestamp}] <{user}>: {content}`.
+ * Author name and content are surrogate-sanitized: a lone surrogate in a pulled
+ * message would 400 the reader's own next request once it lands in the transcript
+ * (see sanitize.ts).
+ */
+function formatMessage(msg: DiscordMessage): string {
+  return `[${msg.timestamp}] <${sanitizeSurrogates(msg.author.username)}>: ${sanitizeSurrogates(msg.content)}`;
+}
 
 /**
  * Handle a disc_read tool call.
  *
- * @param params  Tool parameters: channel_id (required), limit (optional)
+ * @param params  Tool parameters: channel_id (required), limit and message_id (optional)
  * @returns       Formatted digest string or error message
  */
 export async function handleRead(
@@ -59,6 +70,32 @@ export async function handleRead(
   const channel_id = resolveChannelId(rawChannel);
   if (!channel_id) {
     return `Error: unknown channel "${rawChannel}" — not found in ~/.claude/discord.json channels map`;
+  }
+
+  // Optional single-message fetch by (channel, msgid). When message_id is
+  // supplied, fetch exactly that message via GET /channels/{id}/messages/{msgid}
+  // (a single object, not a list) and return its one formatted line. This is the
+  // (channel, msgid) single-fetch primitive #66 adds — the prerequisite for
+  // `disc forward` (#68), which receives a doorbell (channel_id, message_id) and
+  // needs the FULL message content, not the recent-list digest. `limit` is
+  // irrelevant here and ignored.
+  const rawMessageId = params.message_id;
+  if (rawMessageId !== undefined && rawMessageId !== null && String(rawMessageId).trim() !== "") {
+    const message_id = String(rawMessageId).trim();
+    if (!SNOWFLAKE_RE.test(message_id)) {
+      return `Error: message_id must be a Discord snowflake (digits only), got "${message_id}"`;
+    }
+    const single = await discordFetch<DiscordMessage>(
+      `/channels/${channel_id}/messages/${message_id}`
+    );
+    if (!single.ok) {
+      const ms = Date.now() - startMs;
+      log.warn("tool_call", { tool: "disc_read", ok: false, ms, error: single.error });
+      return `Error: ${single.error}`;
+    }
+    const ms = Date.now() - startMs;
+    log.info("tool_call", { tool: "disc_read", ok: true, ms, messages: 1, message_id });
+    return formatMessage(single.data);
   }
 
   // Extract and clamp limit
@@ -97,12 +134,7 @@ export async function handleRead(
   // Discord returns newest-first — reverse for chronological output
   const chronological = [...messages].reverse();
 
-  // Sanitize inbound: a lone surrogate in a pulled message would 400 the
-  // reader's own next request once it lands in the transcript (see sanitize.ts).
-  const lines = chronological.map(
-    (msg) =>
-      `[${msg.timestamp}] <${sanitizeSurrogates(msg.author.username)}>: ${sanitizeSurrogates(msg.content)}`
-  );
+  const lines = chronological.map(formatMessage);
 
   const ms = Date.now() - startMs;
   log.info("tool_call", { tool: "disc_read", ok: true, ms, messages: messages.length });

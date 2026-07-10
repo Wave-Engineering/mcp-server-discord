@@ -58,7 +58,7 @@ export const TOOLS: Tool[] = [
   },
   {
     name: "disc_read",
-    description: "Read recent messages from a Discord channel",
+    description: "Read recent messages from a Discord channel, or a single message by ID",
     inputSchema: {
       type: "object" as const,
       properties: {
@@ -68,7 +68,11 @@ export const TOOLS: Tool[] = [
         },
         limit: {
           type: "number",
-          description: "Number of messages to retrieve (default: 20)",
+          description: "Number of messages to retrieve (default: 20). Ignored when message_id is set.",
+        },
+        message_id: {
+          type: "string",
+          description: "Optional. Fetch a single message by its snowflake ID (GET /channels/{channel_id}/messages/{message_id}) instead of the recent list — used to retrieve the full content of one specific message, e.g. from a doorbell (channel_id, message_id).",
         },
       },
       required: ["channel_id"],

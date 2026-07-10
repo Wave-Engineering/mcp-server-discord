@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **`disc_read` single-message fetch** — optional `message_id` param fetches exactly one message via `GET /channels/{channel_id}/messages/{message_id}` instead of the recent list. The `(channel, msgid)` single-fetch primitive (#66) — prerequisite for `disc forward` (#68).
+
+### Changed
+
+- **`identity.ts` — canonical durable-first, fail-closed resolver** (#66). `readAgentIdentity` now reads the durable `<project_root>/.claude/agent-identity.json` first (falling back to the legacy `/tmp/claude-agent-<md5>.json`), anchors on `CLAUDE_PROJECT_DIR` instead of `git rev-parse` (nested-repo hazard), and **fails closed** — yields an identity only when BOTH `dev_name` and `dev_team` are present. Faithfully mirrors the discord-watcher's `resolveIdentity`, collapsing the two drifted resolvers onto one contract.
+
 ## [1.0.0] — 2026-04-06
 
 Initial release of `mcp-server-discord` — a Bun/TypeScript MCP server that exposes Discord operations as first-class MCP tools for Claude Code agents.

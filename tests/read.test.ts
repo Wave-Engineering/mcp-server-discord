@@ -141,4 +141,96 @@ describe("read", () => {
     expect(result).toContain("Kill switch is active");
     expect(fetchCalled).toBe(false);
   });
+
+  // --- Single-message fetch by (channel, msgid) — #66 -----------------------
+
+  test("read — single message by id → GET /messages/{id}, one formatted line", async () => {
+    // Discord's single-message endpoint returns ONE object, not an array.
+    const single = {
+      id: "999",
+      timestamp: "2024-01-01T12:05:00.000Z",
+      content: "the specific message",
+      author: { id: "u9", username: "dana" },
+    };
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      capturedUrl = String(url);
+      return new Response(JSON.stringify(single), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const { handleRead } = await import("../read.ts");
+
+    const result = await handleRead({ channel_id: "123456", message_id: "999" });
+
+    // Hits the single-message path, not the list path
+    expect(capturedUrl).toContain("/channels/123456/messages/999");
+    expect(capturedUrl).not.toContain("limit=");
+    expect(capturedUrl).not.toContain("?");
+    // Returns exactly one formatted line (no trailing newline / extra lines)
+    expect(result).toBe("[2024-01-01T12:05:00.000Z] <dana>: the specific message");
+  });
+
+  test("read — message_id ignores limit", async () => {
+    const single = {
+      id: "999",
+      timestamp: "2024-01-01T12:05:00.000Z",
+      content: "x",
+      author: { id: "u9", username: "dana" },
+    };
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      capturedUrl = String(url);
+      return new Response(JSON.stringify(single), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const { handleRead } = await import("../read.ts");
+
+    await handleRead({ channel_id: "123456", message_id: "999", limit: 50 });
+
+    expect(capturedUrl).toContain("/channels/123456/messages/999");
+    expect(capturedUrl).not.toContain("limit");
+  });
+
+  test("read — non-snowflake message_id → error, no API call", async () => {
+    let fetchCalled = false;
+    globalThis.fetch = mock(async () => {
+      fetchCalled = true;
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const { handleRead } = await import("../read.ts");
+
+    const result = await handleRead({ channel_id: "123456", message_id: "not-an-id" });
+
+    expect(result).toContain("message_id must be a Discord snowflake");
+    expect(fetchCalled).toBe(false);
+  });
+
+  test("read — single message not found → API error surfaced", async () => {
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      capturedUrl = String(url);
+      return new Response("Unknown Message", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    const { handleRead } = await import("../read.ts");
+
+    const result = await handleRead({ channel_id: "123456", message_id: "404404404" });
+
+    expect(capturedUrl).toContain("/channels/123456/messages/404404404");
+    expect(result).toContain("HTTP 404");
+  });
+
+  test("read — empty message_id falls through to recent-list mode", async () => {
+    globalThis.fetch = mock(async (url: string | URL | Request) => {
+      capturedUrl = String(url);
+      return new Response(JSON.stringify(SAMPLE_MESSAGES), { status: 200 });
+    }) as unknown as typeof fetch;
+
+    const { handleRead } = await import("../read.ts");
+
+    const result = await handleRead({ channel_id: "123456", message_id: "  " });
+
+    // Blank message_id must not divert to the single-message endpoint
+    expect(capturedUrl).toContain("limit=");
+    expect(capturedUrl).not.toContain("/messages/  ");
+    expect(result.split("\n")).toHaveLength(3);
+  });
 });
