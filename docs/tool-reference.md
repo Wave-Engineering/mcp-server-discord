@@ -57,31 +57,34 @@ Send a message to a Discord channel. Messages over 2000 characters are split and
 
 ## disc_read
 
-Read recent messages from a Discord channel. Output is in chronological order (oldest first).
+Read recent messages from a Discord channel (chronological, oldest first), or a single message by ID.
 
 ### Parameters
 
 | Name | Type | Required | Default | Constraints |
 |------|------|----------|---------|-------------|
 | `channel_id` | string | yes | — | Discord channel snowflake ID |
-| `limit` | number | no | 20 | Clamped to range [1, 100]; non-numeric or ≤0 values fall back to default |
+| `limit` | number | no | 20 | Clamped to range [1, 100]; non-numeric or ≤0 values fall back to default. Ignored when `message_id` is set |
+| `message_id` | string | no | — | Snowflake (digits only). When set, fetches exactly that one message instead of the recent list |
 
 ### Behavior
 
-- GETs `/channels/{channel_id}/messages?limit={limit}`.
-- Discord returns messages newest-first; the response is reversed before formatting.
+- **Recent-list mode** (no `message_id`): GETs `/channels/{channel_id}/messages?limit={limit}`. Discord returns messages newest-first; the response is reversed before formatting.
+- **Single-message mode** (`message_id` set): GETs `/channels/{channel_id}/messages/{message_id}` and returns that one message's formatted line. `limit` is ignored. This is the `(channel, msgid)` single-fetch primitive used to retrieve the full content of a specific message (e.g. from a doorbell) — the prerequisite for `disc forward`.
 - Each message is formatted as `[{ISO timestamp}] <{username}>: {content}`.
 
 ### Return Values
 
 | Condition | Return String |
 |-----------|---------------|
-| Messages found | Newline-separated digest, one message per line |
-| No messages | `No messages found` |
+| Messages found (recent-list) | Newline-separated digest, one message per line |
+| Single message found (`message_id`) | One formatted line for that message |
+| No messages (recent-list) | `No messages found` |
 | `channel_id` empty | `Error: channel_id is required` |
+| `message_id` not a snowflake | `Error: message_id must be a Discord snowflake (digits only), got "{value}"` |
 | Kill switch active (timed) | `Kill switch is active (expires at {ISO timestamp})` |
 | Kill switch active (manual) | `Kill switch is active (manual — no expiry)` |
-| API error | `Error: HTTP {status}: {body}` |
+| API error (e.g. message not found) | `Error: HTTP {status}: {body}` |
 | Network error | `Error: Network error: {message}` |
 
 ### Output Format
