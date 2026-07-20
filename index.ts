@@ -197,11 +197,11 @@ if (existsSync(KILL_SWITCH_PATH)) {
 }
 
 const server = new Server(
-  { name: "disc-server", version: "1.3.0" },
+  { name: "disc-server", version: "1.4.0" },
   { capabilities: { tools: {} } }
 );
 
-log.info("startup", { version: "1.3.0", config: { tools: TOOLS.length, kill_switch: false } });
+log.info("startup", { version: "1.4.0", config: { tools: TOOLS.length, kill_switch: false } });
 
 // Resolve API base URL (scream-hole or direct Discord) and log the decision
 await resolveApiBase();
