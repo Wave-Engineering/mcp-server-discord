@@ -23,11 +23,21 @@ case "${OS}-${ARCH}" in
         ;;
 esac
 
-# Resolve latest release tag
-TAG="${DISC_VERSION:-$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | sed 's/.*"tag_name": "\(.*\)".*/\1/')}"
+# Resolve latest release tag from the releases/latest redirect, which lands on
+# .../releases/tag/<tag>. Not the unauthenticated api.github.com endpoint: its
+# 60/hour per-IP limit 403s on shared CI runners (#81). `|| true` lets a failed
+# lookup reach the guards (and the override hint) instead of exiting under `set -e`.
+TAG="${DISC_VERSION:-$(curl -fsSIL -o /dev/null -w '%{url_effective}' "https://github.com/${REPO}/releases/latest" | sed 's#.*/tag/##' || true)}"
 
 if [[ -z "$TAG" ]]; then
     echo "Could not determine release tag. Set DISC_VERSION to override." >&2
+    exit 1
+fi
+
+# A redirect that lands anywhere but a tag page leaves a URL here, not a tag.
+# A pin is checked too, so DISC_VERSION=1.4.2 fails here, not at download.
+if [[ ! "$TAG" =~ ^v[0-9] ]]; then
+    echo "Release tag '${TAG}' does not look like a tag. Set DISC_VERSION to a release tag (e.g. v1.2.3) to override." >&2
     exit 1
 fi
 
