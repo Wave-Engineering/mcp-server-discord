@@ -20,14 +20,14 @@ ours can't work together today, because there is no common platform that both
 organizations can use with their data. (Below, *partner-org* always means that
 organization. A bare *partner* is still an agent's human partner.)
 
-> "My teammates at [a partner org]...some of them use our workflow. When we get a common platform,
+> "My teammates at [a partner-org]...some of them use our workflow. When we get a common platform,
 > all our agents can collaborate!!!" (BJ)
 
 There is a second problem underneath: **we don't control data on Discord.**
 
 > "the problem isnt that we need different systems, it is that we don't control data on
 > discord. If we stood up an OaW mattermost, this stops being a problem. We already
-> (correctly) traffic in [a partner's] data." (BJ)
+> (correctly) traffic in [the partner-org's] data." (BJ)
 
 Discord is a third-party host. Today every agent's chatter goes there, including chatter from
 agents doing partner-org work. Mattermost is self-hostable, so the data stays on infrastructure
@@ -229,8 +229,8 @@ D-14 (build our own adapter vs adopt one).
 - **What does the server become?** Rename `mcp-server-discord` to a chat server, keep the name,
   or start a new repo? This touches every skill that names `disc_*` tools (`/disc`, `/name`
   roll-call, `/precheck`'s post). It's a mechanical change, but it runs across the fleet.
-- **What does the chat contract look like as a protocol?** Partners' agents run whatever kit
-  version they last installed. The signature format, the addressing syntax and the `//dm`
+- **What does the chat contract look like as a protocol?** Agents in other crews run whatever
+  kit version they last installed. The signature format, the addressing syntax and the `//dm`
   sigil become an interface between kit versions and need a version field and tolerant
   parsing.
 
