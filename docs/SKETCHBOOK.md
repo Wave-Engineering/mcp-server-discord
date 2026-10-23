@@ -15,9 +15,10 @@ are already settled.
 
 ## 1. The problem (confirmed by BJ)
 
-Some of BJ's teammates at a partner organization use our workflow. Their dev-agents and ours can't work
-together today, because there is no common platform that both organizations can use with
-their data.
+Some of BJ's teammates at a partner organization use our workflow. Their dev-agents and
+ours can't work together today, because there is no common platform that both
+organizations can use with their data. (Below, *partner-org* always means that
+organization. A bare *partner* is still an agent's human partner.)
 
 > "My teammates at [a partner org]...some of them use our workflow. When we get a common platform,
 > all our agents can collaborate!!!" (BJ)
@@ -29,7 +30,7 @@ There is a second problem underneath: **we don't control data on Discord.**
 > (correctly) traffic in [a partner's] data." (BJ)
 
 Discord is a third-party host. Today every agent's chatter goes there, including chatter from
-agents doing partner work. Mattermost is self-hostable, so the data stays on infrastructure
+agents doing partner-org work. Mattermost is self-hostable, so the data stays on infrastructure
 that a party to the work controls.
 
 ## 2. The shape
@@ -40,7 +41,7 @@ server instance, not a hard-coded pairing.
 
 - **Every agent monitors every configured backend.** The watcher merges them into one doorbell
   stream with one addressing model.
-- **Sending has a default and can be overridden.** An agent working on a partner project
+- **Sending has a default and can be overridden.** An agent working on a partner-org project
   posts to Mattermost by default. An agent can always choose a different backend explicitly,
   and a reply goes back where the thread lives.
 - **On Mattermost, each agent is a real account**, named `<dev-name>.<crew>`, with its own
@@ -49,7 +50,7 @@ server instance, not a hard-coded pairing.
 - **Trust follows partnership.** A partner's direction is the authority. Inside it the agent
   uses her own judgment, including in conversations with agents from other crews.
 
-Where the shared room finally lives (the partner's Mattermost, an OaW-hosted Mattermost, or both
+Where the shared room finally lives (the partner organization's Mattermost, an OaW-hosted Mattermost, or both
 side by side) is left to usage: "once we get this stood up, the right answer will become
 clear after using it for a bit" (BJ). The configured-instance design keeps every one of those
 answers a config change.
@@ -73,8 +74,8 @@ between kit versions.
 
 ### D-02: The root problem is control of data, not the number of systems
 **BJ.** We are moving off Discord because we don't control the data there, not because one
-system is too few. A self-hosted Mattermost removes the problem for partner data, and OaW
-already handles partner data, correctly. The end state is left open, to be decided by usage.
+system is too few. A self-hosted Mattermost removes the problem for partner-org data, and OaW
+already handles partner-org data, correctly. The end state is left open, to be decided by usage.
 
 ### D-03: Backends are configured server instances *(proposed)*
 **babelfish**, following from BJ's D-02. The config lists N Mattermost servers plus Discord. "Stand up an OaW
@@ -86,15 +87,15 @@ release.
 **BJ.** It supersedes the rule in claudecode-workflow
 [`docs/contained-workflow/cutover-prerequisites.md` L182-187](https://github.com/Wave-Engineering/claudecode-workflow/blob/b5b339bae3048bbf7c725ca91195bbdbe9e1e89d/docs/contained-workflow/cutover-prerequisites.md#L182-L187),
 which picked the backend *mechanically* from the forge
-(GitLab/partner → Mattermost, GitHub/OaW → Discord) "so the abstraction *enforces* the IP
+(GitLab/partner-org → Mattermost, GitHub/OaW → Discord) "so the abstraction *enforces* the IP
 boundary".
 
 The rule now:
-- An agent working on a partner project **sends to Mattermost by default**, unless asked to do
+- An agent working on a partner-org project **sends to Mattermost by default**, unless asked to do
   otherwise.
 - **Every agent monitors both** Discord and Mattermost.
-- **A message with no IP in it is valid on Discord**, even from an agent doing partner work.
-- OaW material on Mattermost is **allowed but never required** of a partner-assigned agent.
+- **A message with no IP in it is valid on Discord**, even from an agent doing partner-org work.
+- OaW material on Mattermost is **allowed but never required** of an agent assigned to partner-org work.
 
 *Why.* Enforcement keyed on the forge splits the fleet into two rooms that can't reach each
 other. babelfish proposed a one-way valve instead: GitLab sessions could post only to
@@ -105,7 +106,7 @@ forge-keyed rule can place them. "I think this needs to be a 'default' kind of t
 *Cost, accepted knowingly.* The judgment "does this message contain IP?" belongs to the agent,
 per message. That is no worse than today, where Discord is the only room and the same judgment
 already applies. The change is that a "yes" now has a safe place to go, and the bulk of
-partner-work chatter moves there by default.
+partner-org chatter moves there by default.
 
 ### D-05: Replies follow the thread; the default governs only messages an agent starts
 **babelfish; BJ agreed.** If an agent from another crew asks on Mattermost, the answer goes on
@@ -114,7 +115,7 @@ in one direction.
 
 ### D-06: Choosing the non-default backend is an explicit parameter
 **babelfish; BJ agreed.** The off-default backend is named in the call (for example
-`backend: discord`), never picked up implicitly. Nothing is forbidden, but a partner-work agent
+`backend: discord`), never picked up implicitly. Nothing is forbidden, but an agent doing partner-org work
 posting to Discord becomes a visible intent in the log rather than an accident.
 
 ### D-07: A session with no forge declares its home backend in its identity file
@@ -249,7 +250,7 @@ D-14 (build our own adapter vs adopt one).
 **To verify on the target server** (facts, not decisions):
 
 - Are bot-to-bot DMs supported, or do agents need regular user accounts?
-- Who can create agent accounts? If only a partner admin can, every new agent needs a
+- Who can create agent accounts? If only an admin at the partner organization can, every new agent needs a
   provisioning step. That conflicts with `/name` minting a fresh identity per session, and
   pushes toward durable agent identities.
 - Do bot accounts appear in `@` autocomplete, and can each set its own profile image through the
@@ -257,7 +258,7 @@ D-14 (build our own adapter vs adopt one).
 
 **Deferred, with reason:**
 
-- Where the shared room finally lives (the partner's Mattermost, OaW's, or both): decided by usage
+- Where the shared room finally lives (the partner organization's Mattermost, OaW's, or both): decided by usage
   after stand-up (D-02).
 - Standing up an OaW Mattermost: an infrastructure question, independent of the adapter build
   (D-03 makes it pure config).
